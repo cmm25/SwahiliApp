@@ -35,6 +35,10 @@
     --color-chart-3: hsl(var(--chart-3));
     --color-chart-4: hsl(var(--chart-4));
     --color-chart-5: hsl(var(--chart-5));
+    --color-success: hsl(var(--success));
+    --color-success-foreground: hsl(var(--success-foreground));
+    --color-warning: hsl(var(--warning));
+    --color-warning-foreground: hsl(var(--warning-foreground));
     --radius-radius: var(--radius);
 }
 
@@ -43,18 +47,22 @@
 
 @layer base {
      :root {
+        /* Warm cream background palette */
         --background: 45 30% 96%;
         --foreground: 20 10% 15%;
         --card: 45 40% 98%;
         --card-foreground: 20 10% 15%;
         --popover: 45 30% 94%;
         --popover-foreground: 20 10% 15%;
+        /* Dark brown primary */
         --primary: 20 10% 15%;
         --primary-foreground: 45 30% 96%;
+        /* Warm secondary */
         --secondary: 35 25% 88%;
         --secondary-foreground: 20 10% 15%;
         --muted: 35 20% 85%;
         --muted-foreground: 20 10% 40%;
+        /* Terracotta orange accent */
         --accent: 25 70% 55%;
         --accent-foreground: 45 30% 96%;
         --destructive: 0 72% 50%;
@@ -62,7 +70,9 @@
         --border: 20 15% 70%;
         --input: 20 15% 70%;
         --ring: 20 10% 15%;
+        /* No border radius for hand-drawn style */
         --radius: 0rem;
+        /* Sidebar */
         --sidebar-background: 45 30% 96%;
         --sidebar-foreground: 20 10% 15%;
         --sidebar-primary: 20 10% 15%;
@@ -71,12 +81,17 @@
         --sidebar-accent-foreground: 20 10% 15%;
         --sidebar-border: 20 15% 70%;
         --sidebar-ring: 20 10% 15%;
+        /* Chart colors */
         --chart-1: 25 70% 55%;
         --chart-2: 35 60% 50%;
         --chart-3: 45 50% 45%;
         --chart-4: 20 40% 40%;
         --chart-5: 30 30% 35%;
-        --sketch-border: 2px solid hsl(var(--foreground));
+        /* Success/warning colors */
+        --success: 142 70% 45%;
+        --success-foreground: 0 0% 100%;
+        --warning: 38 92% 50%;
+        --warning-foreground: 0 0% 0%;
     }
     .dark {
         --background: 20 10% 10%;
@@ -98,6 +113,18 @@
         --border: 20 10% 35%;
         --input: 20 10% 35%;
         --ring: 45 30% 90%;
+        --sidebar-background: 20 10% 10%;
+        --sidebar-foreground: 45 30% 90%;
+        --sidebar-primary: 45 30% 90%;
+        --sidebar-primary-foreground: 20 10% 10%;
+        --sidebar-accent: 20 15% 25%;
+        --sidebar-accent-foreground: 45 30% 90%;
+        --sidebar-border: 20 10% 35%;
+        --sidebar-ring: 45 30% 90%;
+        --success: 142 70% 45%;
+        --success-foreground: 0 0% 100%;
+        --warning: 38 92% 50%;
+        --warning-foreground: 0 0% 0%;
     }
 }
 
@@ -106,9 +133,12 @@
         @apply border-border;
     }
     body {
-        @apply bg-background text-foreground font-sans;
+        @apply bg-background text-foreground font-sans antialiased;
     }
 }
+
+
+/* Custom utility classes for hand-drawn style */
 
 @layer utilities {
     .font-hand {
@@ -117,10 +147,20 @@
     .font-hand-secondary {
         font-family: var(--font-hand-secondary);
     }
+    /* Sketch border effect - subtle 1px for refined look */
     .sketch-border {
+        border: 1px solid hsl(var(--foreground) / 0.3);
+        border-radius: 2px 4px 3px 5px;
+    }
+    .sketch-border-accent {
+        border: 1px solid hsl(var(--accent) / 0.5);
+        border-radius: 2px 4px 3px 5px;
+    }
+    .sketch-border-strong {
         border: 2px solid hsl(var(--foreground));
         border-radius: 2px 4px 3px 5px;
     }
+    /* Sketch underline with wavy SVG */
     .sketch-underline {
         position: relative;
     }
@@ -134,7 +174,20 @@
         background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 10'%3E%3Cpath d='M0 5 Q 25 0, 50 5 T 100 5' fill='none' stroke='%23352b26' stroke-width='2'/%3E%3C/svg%3E") repeat-x;
         background-size: contain;
     }
+    /* Hand-drawn box shadow - softer for subtle look */
+    .sketch-shadow {
+        box-shadow: 2px 2px 0px hsl(var(--foreground) / 0.15);
+    }
+    .sketch-shadow-accent {
+        box-shadow: 2px 2px 0px hsl(var(--accent) / 0.3);
+    }
+    .sketch-shadow-strong {
+        box-shadow: 3px 3px 0px hsl(var(--foreground));
+    }
 }
+
+
+/* Animations */
 
 @layer utilities {
     @keyframes float {
@@ -143,7 +196,7 @@
             transform: translateY(0px) rotate(0deg);
         }
         50% {
-            transform: translateY(calc(-1 * var(--float-amplitude, 10px))) rotate(2deg);
+            transform: translateY(-10px) rotate(2deg);
         }
     }
     @keyframes float-reverse {
@@ -152,7 +205,7 @@
             transform: translateY(0px) rotate(0deg);
         }
         50% {
-            transform: translateY(var(--float-amplitude, 10px)) rotate(-2deg);
+            transform: translateY(10px) rotate(-2deg);
         }
     }
     @keyframes draw-in {
@@ -201,6 +254,40 @@
             filter: drop-shadow(0 0 8px hsl(var(--accent) / 0.5));
         }
     }
+    @keyframes bounce-subtle {
+        0%,
+        100% {
+            transform: translateY(0);
+        }
+        50% {
+            transform: translateY(-5px);
+        }
+    }
+    @keyframes fire-flicker {
+        0%,
+        100% {
+            transform: scale(1) rotate(-2deg);
+        }
+        25% {
+            transform: scale(1.05) rotate(2deg);
+        }
+        50% {
+            transform: scale(0.98) rotate(-1deg);
+        }
+        75% {
+            transform: scale(1.02) rotate(1deg);
+        }
+    }
+    @keyframes slide-in-right {
+        from {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
     @keyframes typing {
         from {
             width: 0;
@@ -244,9 +331,19 @@
     .animate-pulse-glow {
         animation: pulse-glow 2s ease-in-out infinite;
     }
+    .animate-bounce-subtle {
+        animation: bounce-subtle 1s ease-in-out infinite;
+    }
+    .animate-fire-flicker {
+        animation: fire-flicker 0.5s ease-in-out infinite;
+    }
+    .animate-slide-in-right {
+        animation: slide-in-right 0.4s ease-out forwards;
+    }
     .animate-spin-slow {
         animation: spin-slow 20s linear infinite;
     }
+    /* Animation delays for staggered effects */
     .stagger-1 {
         animation-delay: 0.1s;
     }
@@ -264,6 +361,19 @@
     }
     .stagger-6 {
         animation-delay: 0.6s;
+    }
+    /* 3D Card flip utilities */
+    .perspective-1000 {
+        perspective: 1000px;
+    }
+    .transform-style-3d {
+        transform-style: preserve-3d;
+    }
+    .backface-hidden {
+        backface-visibility: hidden;
+    }
+    .rotate-y-180 {
+        transform: rotateY(180deg);
     }
 }
 
