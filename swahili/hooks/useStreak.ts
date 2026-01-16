@@ -20,7 +20,7 @@ interface UseStreakReturn {
     refetch: () => Promise<void>;
 }
 
-// Helper to get untyped supabase client for tables not yet in generated types
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const getUntypedClient = () => supabase as any;
 
 export function useStreak(): UseStreakReturn {
@@ -87,7 +87,7 @@ export function useStreak(): UseStreakReturn {
             }
         } catch (err) {
             setError(err as Error);
-            console.error("Error fetching streak:", err);
+            console.error("Error fetching streak:", JSON.stringify(err, null, 2));
         } finally {
             setIsLoading(false);
         }
