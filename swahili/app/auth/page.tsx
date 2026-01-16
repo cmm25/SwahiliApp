@@ -20,7 +20,7 @@ export default function Auth() {
     password: "",
   });
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const { signIn, signUp, user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
@@ -43,7 +43,7 @@ export default function Auth() {
           toast({
             variant: "destructive",
             title: "Login Failed",
-            description: error.message === "Invalid login credentials" 
+            description: error.message === "Invalid login credentials"
               ? "Invalid email or password. Please try again."
               : error.message,
           });
@@ -122,8 +122,12 @@ export default function Auth() {
 
       {/* Greeting */}
       <div className="text-center mb-8 animate-fade-in-up">
-        <h2 className="font-hand text-4xl text-foreground mb-2">{randomGreeting.swahili}</h2>
-        <p className="font-hand-secondary text-muted-foreground">{randomGreeting.english}</p>
+        <h2 className="font-hand text-4xl text-foreground mb-2" suppressHydrationWarning>
+          {randomGreeting.swahili}
+        </h2>
+        <p className="font-hand-secondary text-muted-foreground" suppressHydrationWarning>
+          {randomGreeting.english}
+        </p>
       </div>
 
       {/* Auth Card */}
@@ -134,8 +138,8 @@ export default function Auth() {
             onClick={() => setIsLogin(true)}
             className={cn(
               "flex-1 py-2 font-hand-secondary text-lg transition-all",
-              isLogin 
-                ? "text-accent border-b-2 border-accent" 
+              isLogin
+                ? "text-accent border-b-2 border-accent"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -145,8 +149,8 @@ export default function Auth() {
             onClick={() => setIsLogin(false)}
             className={cn(
               "flex-1 py-2 font-hand-secondary text-lg transition-all",
-              !isLogin 
-                ? "text-accent border-b-2 border-accent" 
+              !isLogin
+                ? "text-accent border-b-2 border-accent"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -239,8 +243,8 @@ export default function Auth() {
       </SketchCard>
 
       {/* Back to landing */}
-      <Link 
-        href="/" 
+      <Link
+        href="/"
         className="mt-6 font-hand-secondary text-muted-foreground hover:text-accent transition-colors"
       >
         ← Rudi nyumbani (Back home)

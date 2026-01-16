@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   DrawingCanvas,
   AnimatedBrain,
@@ -119,14 +120,16 @@ const Index = () => {
 
           {/* login Button */}
           <div className="flex flex-col sm:flex-row gap-4 items-start opacity-0 animate-fade-in-up" style={{ animationDelay: '1.5s', animationFillMode: 'forwards' }}>
-            <HandDrawnButton variant="primary" size="lg" className="group">
-              <span className="flex items-center gap-3">
-                Anza Sasa
-                <svg className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </span>
-            </HandDrawnButton>
+            <Link href="/auth">
+              <HandDrawnButton variant="primary" size="lg" className="group">
+                <span className="flex items-center gap-3">
+                  Anza Sasa
+                  <svg className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </span>
+              </HandDrawnButton>
+            </Link>
           </div>
 
           {/* Social proof with animated counter */}

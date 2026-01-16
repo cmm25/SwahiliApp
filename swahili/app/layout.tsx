@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Caveat, Patrick_Hand, DM_Sans } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/hooks/useAuth";
+import { Toaster } from "@/components/ui/toaster";
 
 const caveat = Caveat({
   subsets: ["latin"],
@@ -33,7 +35,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${caveat.variable} ${patrickHand.variable} ${dmSans.variable} antialiased font-sans`}>
-        {children}
+        <AuthProvider>
+          {children}
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );

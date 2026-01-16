@@ -4,14 +4,14 @@ import { useCallback } from "react";
 
 // Route to component mapping for prefetching
 const routeComponents: Record<string, () => Promise<unknown>> = {
-  "/": () => import("@/pages/Index"),
-  "/auth": () => import("@/pages/Auth"),
-  "/onboarding": () => import("@/pages/Onboarding"),
-  "/dashboard": () => import("@/pages/Dashboard"),
-  "/lessons": () => import("@/pages/Lessons"),
-  "/conversation": () => import("@/pages/Conversation"),
-  "/vocabulary": () => import("@/pages/Vocabulary"),
-  "/profile": () => import("@/pages/Profile"),
+  "/": () => import("@/app/page"),
+  "/auth": () => import("@/app/auth/page"),
+  "/onboarding": () => import("@/app/onboarding/page"),
+  "/dashboard": () => import("@/app/dashboard/page"),
+  "/lessons": () => import("@/app/lessons/page"),
+  "/conversation": () => import("@/app/conversation/page"),
+  "/vocabulary": () => import("@/app/vocabulary/page"),
+  "/profile": () => import("@/app/profile/page"),
 };
 
 // Cache to prevent duplicate prefetches
