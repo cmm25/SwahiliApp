@@ -1,5 +1,8 @@
+'use client';
+
 import { cn } from "@/lib/utils";
 import { Droplets, Leaf, Flower2, TreeDeciduous, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 type GrowthStage = "seed" | "sprout" | "sapling" | "flower" | "tree";
 
@@ -17,6 +20,46 @@ const stages: { key: GrowthStage; icon: React.ReactNode; label: string; emoji: s
 ];
 
 export function GrowthVisualization({ distribution, totalWords }: GrowthVisualizationProps) {
+  const previousDistribution = useRef<Record<GrowthStage, number>>(distribution);
+  const [animatingStages, setAnimatingStages] = useState<Set<GrowthStage>>(new Set());
+  const [sparklePositions, setSparklePositions] = useState<{ stage: GrowthStage; id: number }[]>([]);
+
+  // Detect when a stage count increases (level up happened)
+  useEffect(() => {
+    const newAnimating = new Set<GrowthStage>();
+    const newSparkles: { stage: GrowthStage; id: number }[] = [];
+
+    stages.forEach(stage => {
+      const prev = previousDistribution.current[stage.key];
+      const current = distribution[stage.key];
+      
+      if (current > prev) {
+        newAnimating.add(stage.key);
+        // Add sparkles for each new word
+        for (let i = 0; i < current - prev; i++) {
+          newSparkles.push({ stage: stage.key, id: Date.now() + i });
+        }
+      }
+    });
+
+    if (newAnimating.size > 0) {
+      setAnimatingStages(newAnimating);
+      setSparklePositions(prev => [...prev, ...newSparkles]);
+
+      // Clear animations after they complete
+      setTimeout(() => {
+        setAnimatingStages(new Set());
+      }, 600);
+
+      // Clear sparkles
+      setTimeout(() => {
+        setSparklePositions(prev => prev.filter(s => !newSparkles.includes(s)));
+      }, 800);
+    }
+
+    previousDistribution.current = { ...distribution };
+  }, [distribution]);
+
   return (
     <div className="relative">
       {/* Garden path visualization */}
@@ -25,9 +68,22 @@ export function GrowthVisualization({ distribution, totalWords }: GrowthVisualiz
           const count = distribution[stage.key];
           const percentage = totalWords > 0 ? (count / totalWords) * 100 : 0;
           const height = Math.max(60, 40 + percentage * 1.5);
+          const isAnimating = animatingStages.has(stage.key);
+          const stageSparkles = sparklePositions.filter(s => s.stage === stage.key);
 
           return (
-            <div key={stage.key} className="flex-1 flex flex-col items-center group">
+            <div key={stage.key} className="flex-1 flex flex-col items-center group relative">
+              {/* Floating sparkles when leveling up */}
+              {stageSparkles.map((sparkle, i) => (
+                <div
+                  key={sparkle.id}
+                  className="absolute -top-4 animate-float-up pointer-events-none"
+                  style={{ left: `${30 + i * 20}%` }}
+                >
+                  <Sparkles size={16} className="text-warning" />
+                </div>
+              ))}
+
               {/* Growing plant visualization */}
               <div 
                 className={cn(
@@ -38,46 +94,50 @@ export function GrowthVisualization({ distribution, totalWords }: GrowthVisualiz
                   stage.key === "flower" ? "border-accent/30" : 
                   stage.key === "sapling" ? "border-success/40" :
                   stage.key === "sprout" ? "border-success/20" : "border-border/30",
-                  "hover:scale-105 cursor-pointer group"
+                  "hover:scale-105 cursor-pointer group",
+                  isAnimating && "animate-grow-up"
                 )}
                 style={{ height: `${height}px` }}
               >
-                {/* Emoji plant */}
+                {/* Emoji plant with animation */}
                 <div className={cn(
                   "text-3xl md:text-4xl transition-transform duration-300",
                   "group-hover:scale-110",
                   stage.key === "tree" && "animate-wiggle",
-                  stage.key === "flower" && "group-hover:animate-bounce-subtle"
+                  stage.key === "flower" && "group-hover:animate-bounce-subtle",
+                  isAnimating && "animate-sprout"
                 )}>
                   {stage.emoji}
                 </div>
 
                 {/* Sparkle for mastered */}
                 {stage.key === "tree" && count > 0 && (
-                  <div className="absolute -top-1 -right-1">
+                  <div className={cn(
+                    "absolute -top-1 -right-1",
+                    isAnimating && "animate-sparkle-burst"
+                  )}>
                     <Sparkles size={14} className="text-warning animate-pulse-glow" />
                   </div>
                 )}
 
-                {/* Count badge */}
+                {/* Count badge with pulse on update */}
                 <div className={cn(
                   "absolute -top-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold",
-                  "border-2 border-card shadow-sm",
+                  "border-2 border-card shadow-sm transition-transform",
                   stage.key === "tree" ? "bg-warning text-warning-foreground" :
                   stage.key === "flower" ? "bg-accent text-accent-foreground" :
                   stage.key === "sapling" || stage.key === "sprout" ? "bg-success text-success-foreground" :
-                  "bg-muted text-muted-foreground"
+                  "bg-muted text-muted-foreground",
+                  isAnimating && "scale-125"
                 )}>
                   {count}
                 </div>
               </div>
 
-              {/* Ground/soil */}
-              <div className="w-full max-w-[90px] h-3 bg-gradient-to-b from-amber-600/30 to-amber-800/20 rounded-b-lg border-x-2 border-b-2 border-amber-700/20" />
 
               {/* Label */}
               <p className={cn(
-                "font-hand-secondary text-xs md:text-sm mt-2 text-center transition-colors",
+                "font-hand-secondary text-xs md:text-sm mt-3 text-center transition-colors",
                 stage.color,
                 "group-hover:font-medium"
               )}>
@@ -87,9 +147,6 @@ export function GrowthVisualization({ distribution, totalWords }: GrowthVisualiz
           );
         })}
       </div>
-
-      {/* Connecting path (ground) */}
-      <div className="absolute bottom-16 left-0 right-0 h-1 bg-gradient-to-r from-amber-600/10 via-amber-700/20 to-amber-600/10 -z-10" />
     </div>
   );
 }
