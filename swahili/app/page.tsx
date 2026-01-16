@@ -5,7 +5,8 @@ import {
   AnimatedPlant,
   AnimatedStar,
   AnimatedSparkle,
-  FloatingElement
+  FloatingElement,
+  AnimatedLightbulb
 } from '@/components/landingpage/AnimatedDoodles';
 import { HandDrawnButton } from '@/components/landingpage/HandDrawnButton';
 import { AnimatedCounter } from '@/components/landingpage/TextAnimations';
@@ -62,13 +63,6 @@ const Index = () => {
             </a>
           ))}
         </div>
-
-        <div className="opacity-0 animate-fade-in-up" style={{ animationDelay: '0.7s', animationFillMode: 'forwards' }}>
-          <HandDrawnButton variant="primary" className="hidden md:block text-base lg:text-lg">
-            Anza Sasa
-          </HandDrawnButton>
-        </div>
-
         {/* Mobile menu button */}
         <button className="md:hidden text-foreground p-2 opacity-0 animate-fade-in-up" style={{ animationDelay: '0.5s', animationFillMode: 'forwards' }}>
           <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -123,11 +117,11 @@ const Index = () => {
             Kujifunza lugha ya Kiswahili kupitia AI ambayo inakuelewa na kukusaidia hatua kwa hatua.
           </p>
 
-          {/* CTA Button */}
+          {/* login Button */}
           <div className="flex flex-col sm:flex-row gap-4 items-start opacity-0 animate-fade-in-up" style={{ animationDelay: '1.5s', animationFillMode: 'forwards' }}>
             <HandDrawnButton variant="primary" size="lg" className="group">
               <span className="flex items-center gap-3">
-                Jaribu Bure
+                Anza Sasa
                 <svg className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
@@ -181,7 +175,12 @@ const Index = () => {
                 <AnimatedPlant className="w-24 xl:w-28 h-28 xl:h-32 text-foreground" />
               </ParallaxElement>
             </FloatingElement>
-
+            {/* Floating lightbulb - new cool illustration */}
+            <FloatingElement delay={0.7} amplitude={7} duration={3.8}>
+              <ParallaxElement speed={-0.3} className="absolute -bottom-8 left-12">
+                <AnimatedLightbulb className="w-20 xl:w-24 h-28 xl:h-32 text-foreground" />
+              </ParallaxElement>
+            </FloatingElement>
             {/* Animated stars */}
             <FloatingElement delay={0.5} amplitude={5} duration={3}>
               <AnimatedStar delay={2} className="absolute top-8 right-8 w-8 xl:w-10 h-8 xl:h-10 text-accent animate-pulse-glow" />
