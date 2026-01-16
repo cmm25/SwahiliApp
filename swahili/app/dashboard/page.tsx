@@ -23,9 +23,11 @@ import { AchievementBadge, BadgeType } from "@/components/shared/AchievementBadg
 import { LionMascot, SketchFlame, SketchStar } from "@/components/shared/HandDrawnIcons";
 import { DoodleArrow, SquigglyUnderline, WobblyProgress, CornerSquiggle } from "@/components/shared/Doodle";
 import { useState, useEffect } from "react";
+import { useStreak } from "@/hooks/useStreak";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 export default function Dashboard() {
+  const { streak, xp } = useStreak();
   const [typedText, setTypedText] = useState("");
   const [showCursor, setShowCursor] = useState(true);
 
@@ -38,13 +40,18 @@ export default function Dashboard() {
 
   const greeting = getGreeting();
 
+  // Calculate level from XP (100 XP per level)
+  const level = Math.floor(xp / 500) + 1;
+  const currentLevelXP = xp % 500;
+  const requiredLevelXP = 500;
+
   const userData = {
     name: "Mwanafunzi",
-    streak: 7,
-    xp: 1250,
-    level: 3,
-    currentLevelXP: 250,
-    requiredLevelXP: 500,
+    streak,
+    xp,
+    level,
+    currentLevelXP,
+    requiredLevelXP,
     lessonsCompletedToday: 2,
     dailyGoal: 3,
     rank: 4,
@@ -73,8 +80,8 @@ export default function Dashboard() {
     { day: 7, quote: "Kuishi kwingi kuona mengi", translation: "To live long is to see much", meaning: "Keep your streak going!" },
   ];
 
-  // Get today's bubble based on streak (cycling through 7 days)
-  const todaysBubble = wisdomBubbles[(userData.streak - 1) % 7];
+  // Get today's bubble based on streak (cycling through 7 days, default to first if streak is 0)
+  const todaysBubble = wisdomBubbles[streak > 0 ? (streak - 1) % 7 : 0];
 
   // Typing animation effect
   useEffect(() => {
@@ -203,7 +210,7 @@ export default function Dashboard() {
                     <h2 className="font-hand text-xl flex items-center gap-2">
                       🎯 Lengo la Leo
                     </h2>
-                    <p className="font-hand-secondary text-xs text-muted-foreground">Today's Goal</p>
+                    <p className="font-hand-secondary text-xs text-muted-foreground">Today&apos;s Goal</p>
                   </div>
                   <div className="text-right">
                     <p className="font-hand text-2xl">
@@ -340,7 +347,7 @@ export default function Dashboard() {
                 </button>
 
                 <div className="bg-card/50 rounded-lg p-2 border border-border/20">
-                  <p className="font-hand-secondary text-xs italic">"{wordOfDay.example}"</p>
+                  <p className="font-hand-secondary text-xs italic">&quot;{wordOfDay.example}&quot;</p>
                 </div>
               </div>
 
@@ -366,7 +373,7 @@ export default function Dashboard() {
                 </div>
 
                 <div className="bg-card/60 backdrop-blur-sm rounded-xl p-3 border border-border/20 mb-2">
-                  <p className="font-hand text-lg text-center mb-1">"{todaysBubble.quote}"</p>
+                  <p className="font-hand text-lg text-center mb-1">&quot;{todaysBubble.quote}&quot;</p>
                   <p className="font-hand-secondary text-sm text-accent text-center italic">
                     {todaysBubble.translation}
                   </p>

@@ -21,6 +21,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { SketchButton } from "@/components/shared/SketchButton";
 import { SketchCard } from "@/components/shared/SketchCard";
+import { useStreak } from "@/hooks/useStreak";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 // Word growth stages - like a garden!
@@ -70,6 +71,7 @@ const gardenStats = {
 };
 
 export default function Vocabulary() {
+  const { streak, xp, addXp } = useStreak();
   const [words, setWords] = useState<Word[]>(initialWords);
   const [practiceMode, setPracticeMode] = useState(false);
   const [currentPracticeIndex, setCurrentPracticeIndex] = useState(0);
@@ -85,12 +87,15 @@ export default function Vocabulary() {
   const wordsNeedingWater = words.filter(w => w.stage !== "tree" || w.lastReviewed !== "Today");
   const currentPracticeWord = wordsNeedingWater[currentPracticeIndex];
 
-  const handlePracticeAnswer = (correct: boolean) => {
+  const handlePracticeAnswer = async (correct: boolean) => {
     if (correct && currentPracticeWord) {
-      const xp = growthStages[currentPracticeWord.stage].xpBonus;
-      setEarnedXP(prev => prev + xp);
+      const xpAmount = growthStages[currentPracticeWord.stage].xpBonus;
+      setEarnedXP(prev => prev + xpAmount);
       setShowXPPopup(true);
       setTimeout(() => setShowXPPopup(false), 1000);
+
+      // Add XP to database
+      await addXp(xpAmount);
 
       setWords(prev => prev.map(w => {
         if (w.id === currentPracticeWord.id) {
@@ -128,8 +133,6 @@ export default function Vocabulary() {
   return (
     <ProtectedRoute>
       <AppLayout>
-        {/* ... (rest of the component) ... */}
-        {/* Note: I'll preserve the full component content here but wrapped in ProtectedRoute */}
         <PageHeader 
           title="Bustani ya Maneno" 
           subtitle="Your Word Garden — Watch your vocabulary bloom! 🌻"
@@ -140,8 +143,8 @@ export default function Vocabulary() {
           <GardenStats 
             totalWords={gardenStats.totalWords}
             masteredWords={gardenStats.trees}
-            streakDays={gardenStats.streakDays}
-            todayXP={gardenStats.todayXP + earnedXP}
+            streakDays={streak}
+            todayXP={xp}
             waterProgress={gardenStats.waterDrops}
           />
         </section>

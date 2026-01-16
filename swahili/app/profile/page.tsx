@@ -15,12 +15,14 @@ import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useStreak } from "@/hooks/useStreak";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 const allBadges: BadgeType[] = ["first_lesson", "streak_7", "streak_30", "words_100", "words_500", "conversation_10", "perfect_quiz", "daily_goal", "explorer", "champion"];
 const unlockedBadges: BadgeType[] = ["first_lesson", "streak_7", "words_100"];
 
 export default function Profile() {
+  const { streak, xp } = useStreak();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [profile, setProfile] = useState({
     displayName: "Mwanafunzi",
@@ -30,6 +32,11 @@ export default function Profile() {
   const { signOut, user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  
+  // Calculate level from XP
+  const level = Math.floor(xp / 500) + 1;
+  const currentLevelXP = xp % 500;
+  const requiredLevelXP = 500;
 
   const handleSaveProfile = async (data: { displayName: string; avatar: string }) => {
     // UI only - stores in local state
@@ -82,8 +89,8 @@ export default function Profile() {
             </p>
             
             <div className="flex justify-center gap-4 mt-4">
-              <StreakBadge streak={7} size="md" />
-              <XPBadge xp={1250} size="md" />
+              <StreakBadge streak={streak} size="md" />
+              <XPBadge xp={xp} size="md" />
             </div>
 
             {/* Edit Profile Button */}
@@ -100,7 +107,7 @@ export default function Profile() {
 
           <SketchCard className="md:col-span-2">
             <h3 className="font-hand text-xl mb-4">Maendeleo (Progress)</h3>
-            <LevelProgress level={3} currentXP={250} requiredXP={500} />
+            <LevelProgress level={level} currentXP={currentLevelXP} requiredXP={requiredLevelXP} />
             <div className="grid grid-cols-3 gap-4 mt-6 text-center">
               <div>
                 <p className="font-hand text-2xl text-accent">42</p>
