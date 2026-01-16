@@ -7,7 +7,17 @@ import {
   AnimatedStar,
   AnimatedSparkle,
   FloatingElement,
-  AnimatedLightbulb
+  AnimatedLightbulb,
+  AnimatedRocket,
+  AnimatedChatBubble,
+  AnimatedPencil,
+  AnimatedMusicNotes,
+  AnimatedGlobe,
+  AnimatedHeart,
+  AnimatedSquiggle,
+  AnimatedArrowPointer,
+  AnimatedConfetti,
+  AnimatedPattern
 } from '@/components/landingpage/AnimatedDoodles';
 import { HandDrawnButton } from '@/components/landingpage/HandDrawnButton';
 import { AnimatedCounter } from '@/components/landingpage/TextAnimations';
@@ -233,12 +243,29 @@ const Index = () => {
             {/* Additional decorative sparkles */}
             <AnimatedSparkle delay={2.5} size={16} className="absolute top-16 left-1/3 text-accent/60" />
             <AnimatedSparkle delay={2.8} size={12} className="absolute bottom-1/3 right-1/4 text-foreground/40" />
+
+            {/* New Doodles scattered */}
+            <ParallaxElement speed={-0.2} className="absolute bottom-10 left-10">
+              <AnimatedPencil className="w-8 h-24 rotate-45 opacity-60" />
+            </ParallaxElement>
+
+            <ParallaxElement speed={0.1} className="absolute top-20 left-10">
+              <AnimatedMusicNotes className="w-12 h-12 text-accent/40" />
+            </ParallaxElement>
+
+            <FloatingElement delay={1.2} amplitude={4} duration={5}>
+              <AnimatedRocket className="absolute -top-10 left-1/2 w-12 h-20 opacity-80" />
+            </FloatingElement>
           </MouseFollower>
         </div>
       </main>
 
       {/* Bottom tagline */}
       <div className="absolute bottom-4 md:bottom-6 lg:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-10 opacity-0 animate-fade-in-up" style={{ animationDelay: '2.2s', animationFillMode: 'forwards' }}>
+        <div className="flex gap-2 mb-2">
+          <AnimatedGlobe className="w-6 h-6 text-muted-foreground/50" />
+          <AnimatedHeart className="w-6 h-6 text-accent/50" />
+        </div>
         <span className="font-hand-secondary text-xs md:text-sm text-muted-foreground tracking-wide">
           Made with ♥
         </span>
