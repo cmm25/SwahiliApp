@@ -28,11 +28,11 @@ export default function Profile() {
     displayName: "Mwanafunzi",
     avatar: "lion",
   });
-  
+
   const { signOut, user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
-  
+
   // Calculate level from XP
   const level = Math.floor(xp / 500) + 1;
   const currentLevelXP = xp % 500;
@@ -44,29 +44,14 @@ export default function Profile() {
     await new Promise(resolve => setTimeout(resolve, 300));
   };
 
-  const handleLogout = async () => {
-    await signOut();
-    toast({
-      title: "Kwaheri! (Goodbye!)",
-      description: "You have been logged out.",
-    });
-    router.push("/");
-  };
-
   return (
     <ProtectedRoute>
       <AppLayout>
-        <PageHeader 
-          title="Wasifu" 
-          subtitle="Your learning profile" 
-          action={
-            <SketchButton variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut size={14} className="mr-1" />
-              Logout
-            </SketchButton>
-          }
+        <PageHeader
+          title="Wasifu"
+          subtitle="Your learning profile"
         />
-        
+
         <div className="grid md:grid-cols-3 gap-6">
           <SketchCard className="md:col-span-1 text-center relative group">
             {/* Edit Button */}
@@ -82,21 +67,21 @@ export default function Profile() {
             <div className="flex justify-center">
               <ProfileAvatar avatarId={profile.avatar} size="xl" />
             </div>
-            
+
             <h2 className="font-hand text-2xl mt-4">{profile.displayName}</h2>
             <p className="font-hand-secondary text-sm text-muted-foreground">
               {user?.email || "Joined January 2026"}
             </p>
-            
+
             <div className="flex justify-center gap-4 mt-4">
               <StreakBadge streak={streak} size="md" />
               <XPBadge xp={xp} size="md" />
             </div>
 
             {/* Edit Profile Button */}
-            <SketchButton 
-              variant="outline" 
-              size="sm" 
+            <SketchButton
+              variant="outline"
+              size="sm"
               className="mt-4"
               onClick={() => setIsEditOpen(true)}
             >
