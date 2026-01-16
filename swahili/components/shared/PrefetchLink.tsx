@@ -1,17 +1,21 @@
 'use client';
 
-import { Link, LinkProps } from "react-router-dom";
+import Link, { LinkProps } from "next/link";
 import { usePrefetch } from "@/hooks/usePrefetch";
 import { forwardRef, useCallback } from "react";
 
 interface PrefetchLinkProps extends LinkProps {
   prefetchOnHover?: boolean;
+  className?: string;
+  onMouseEnter?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
+  onFocus?: (e: React.FocusEvent<HTMLAnchorElement>) => void;
+  children: React.ReactNode;
 }
 
 export const PrefetchLink = forwardRef<HTMLAnchorElement, PrefetchLinkProps>(
-  ({ to, prefetchOnHover = true, onMouseEnter, onFocus, children, ...props }, ref) => {
+  ({ href, prefetchOnHover = true, onMouseEnter, onFocus, children, ...props }, ref) => {
     const { prefetch } = usePrefetch();
-    const path = typeof to === "string" ? to : to.pathname || "";
+    const path = typeof href === "string" ? href : href.pathname || "";
 
     const handleMouseEnter = useCallback(
       (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -36,7 +40,7 @@ export const PrefetchLink = forwardRef<HTMLAnchorElement, PrefetchLinkProps>(
     return (
       <Link
         ref={ref}
-        to={to}
+        href={href}
         onMouseEnter={handleMouseEnter}
         onFocus={handleFocus}
         {...props}
