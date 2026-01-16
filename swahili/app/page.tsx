@@ -6,10 +6,10 @@ import {
   AnimatedStar,
   AnimatedSparkle,
   FloatingElement
-} from '@/components/features/landingpage/AnimatedDoodles';
-import { HandDrawnButton } from '@/components/features/landingpage/HandDrawnButton';
-import { AnimatedCounter } from '@/components/features/landingpage/TextAnimations';
-import { MouseFollower, CursorGlow, ParallaxElement } from '@/components/features/landingpage/InteractiveEffects';
+} from '@/components/landingpage/AnimatedDoodles';
+import { HandDrawnButton } from '@/components/landingpage/HandDrawnButton';
+import { AnimatedCounter } from '@/components/landingpage/TextAnimations';
+import { MouseFollower, CursorGlow, ParallaxElement } from '@/components/landingpage/InteractiveEffects';
 
 const Index = () => {
   return (
