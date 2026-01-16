@@ -1,0 +1,117 @@
+'use client';
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
+import { AnimatedBackground } from "@/components/onboarding/AnimatedBackground";
+import { OnboardingProgress } from "@/components/onboarding/OnboardingProgress";
+import { WelcomeStep } from "@/components/onboarding/WelcomeStep";
+import { AvatarStep } from "@/components/onboarding/AvatarStep";
+import { NameStep } from "@/components/onboarding/NameStep";
+import { CelebrationStep } from "@/components/onboarding/CelebrationStep";
+
+type OnboardingStep = "welcome" | "avatar" | "name" | "complete";
+
+const STEPS: OnboardingStep[] = ["welcome", "avatar", "name", "complete"];
+
+export default function Onboarding() {
+  const [step, setStep] = useState<OnboardingStep>("welcome");
+  const [selectedAvatar, setSelectedAvatar] = useState("lion");
+  const [displayName, setDisplayName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const currentStepIndex = STEPS.indexOf(step);
+
+  const transitionTo = (nextStep: OnboardingStep) => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setStep(nextStep);
+      setIsTransitioning(false);
+    }, 300);
+  };
+
+  const handleComplete = async () => {
+    if (!displayName.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Jina Linahitajika (Name Required)",
+        description: "Please enter your display name to continue.",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    transitionTo("complete");
+    
+    setTimeout(() => {
+      toast({
+        title: "Karibu sana! (Welcome!)",
+        description: "Your profile is all set. Let's start learning!",
+      });
+      router.push("/dashboard");
+    }, 2500);
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      <AnimatedBackground />
+      
+      {/* Progress indicator */}
+      <div className="absolute top-8 left-1/2 -translate-x-1/2">
+        <OnboardingProgress currentStep={currentStepIndex} totalSteps={STEPS.length} />
+      </div>
+
+      {/* Step content with transitions */}
+      <div 
+        className={`w-full max-w-2xl transition-all duration-300 ${
+          isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+        }`}
+      >
+        {step === "welcome" && (
+          <WelcomeStep onNext={() => transitionTo("avatar")} />
+        )}
+
+        {step === "avatar" && (
+          <AvatarStep
+            selectedAvatar={selectedAvatar}
+            onSelect={setSelectedAvatar}
+            onNext={() => transitionTo("name")}
+            onBack={() => transitionTo("welcome")}
+          />
+        )}
+
+        {step === "name" && (
+          <NameStep
+            selectedAvatar={selectedAvatar}
+            displayName={displayName}
+            onNameChange={setDisplayName}
+            onComplete={handleComplete}
+            onBack={() => transitionTo("avatar")}
+            isLoading={isLoading}
+          />
+        )}
+
+        {step === "complete" && (
+          <CelebrationStep 
+            displayName={displayName} 
+            selectedAvatar={selectedAvatar} 
+          />
+        )}
+      </div>
+
+      {/* Skip option (subtle) */}
+      {step !== "complete" && (
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="absolute bottom-6 font-hand-secondary text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4"
+        >
+          Skip for now
+        </button>
+      )}
+    </div>
+  );
+}
