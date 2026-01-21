@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ==========================================
+// Existing Supabase Tables (Mapped)
+// ==========================================
+
+model Profile {
+  id          String   @id @default(uuid()) @map("id") // Maps to auth.users.id
+  userId      String   @unique @map("user_id") // Foreign key to auth.users
+  displayName String?  @map("display_name")
+  avatar      String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  streaks        UserStreak?
+  activity       UserActivity[]
+  vocabulary     UserVocabulary[]
+  progress       UserProgress[]
+  practiceSessions PracticeSession[]
+  conversations  ConversationSession[]
+
+  @@map("profiles")
+}
+
+model UserStreak {
+  userId           String   @id @map("user_id")
+  currentStreak    Int      @default(0) @map("current_streak")
+  longestStreak    Int      @default(0) @map("longest_streak")
+  lastActivityDate DateTime? @map("last_activity_date") @db.Date
+  totalXp          Int      @default(0) @map("total_xp")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user Profile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@map("user_streaks")
+}
+
+model UserActivity {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  activityDate DateTime @default(now()) @map("activity_date") @db.Date
+  activityType String   @default("general") @map("activity_type")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user Profile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@unique([userId, activityDate])
+  @@map("user_activity")
+}
+
+model VocabularyWord {
+  id            String   @id @default(uuid())
+  swahili       String
+  english       String
+  pronunciation String?
+  difficulty    Int      @default(1)
+  category      String?
+  examples      Json?    // Array of strings or objects
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  userProgress UserVocabulary[]
+
+  @@map("vocabulary_words")
+}
+
+model UserVocabulary {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  wordId         String   @map("word_id")
+  easeFactor     Float    @default(2.5) @map("ease_factor")
+  interval       Int      @default(0)
+  repetitions    Int      @default(0)
+  nextReview     DateTime @default(now()) @map("next_review")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user Profile        @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  word VocabularyWord @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, wordId])
+  @@map("learning_progress")
+}
+
+model UserProgress {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  lessonId  String   @map("lesson_id")
+  completed Boolean  @default(false)
+  score     Int?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user Profile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@map("completed_lessons")
+}
+
+// ==========================================
+// New Agent & Opik Tables
+// ==========================================
+
+model AgentTrace {
+  id            String   @id @default(uuid())
+  userId        String?  @map("user_id")
+  agentName     String   @map("agent_name") // e.g. "teacher", "quiz", "orchestrator"
+  input         String   @db.Text
+  output        String   @db.Text
+  metadata      Json?    // Store model used, tokens, latency
+  feedbackScore Float?   @map("feedback_score") // 0.0 to 1.0 (from Evaluator)
+  tags          String[] // ["grammar", "vocabulary", "error"]
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Link to Opik Trace ID if available
+  opikTraceId   String?  @map("opik_trace_id")
+
+  @@map("agent_traces")
+}
+
+model ScrapedContent {
+  id        String   @id @default(uuid())
+  url       String   @unique
+  title     String?
+  content   String   @db.Text
+  processed Boolean  @default(false)
+  category  String?  // "culture", "news", "grammar"
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("scraped_content")
+}
+
+model ConversationSession {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  topic     String?
+  status    String   @default("active") // "active", "completed"
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user     Profile               @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  messages ConversationMessage[]
+
+  @@map("conversation_sessions")
+}
+
+model ConversationMessage {
+  id        String   @id @default(uuid())
+  sessionId String   @map("session_id")
+  role      String   // "user", "assistant"
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session ConversationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("conversation_messages")
+}
+
+model PracticeSession {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  type      String   // "quiz", "flashcards"
+  score     Int?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      Profile            @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  responses PracticeResponse[]
+
+  @@map("practice_sessions")
+}
+
+model PracticeResponse {
+  id        String   @id @default(uuid())
+  sessionId String   @map("session_id")
+  question  String   @db.Text
+  answer    String   @db.Text
+  correct   Boolean
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session PracticeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("practice_responses")
+}
