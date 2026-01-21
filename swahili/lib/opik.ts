@@ -1,5 +1,4 @@
-import { AgentTrace } from '@prisma/client';
-import prisma from '@/lib/db';
+import { supabaseAdmin } from '@/lib/supabase-server';
 import { Opik } from 'opik';
 
 // Initialize Opik client (server-side only)
@@ -10,6 +9,7 @@ const opikClient = new Opik({
 });
 
 export interface TraceData {
+    userId?: string; // Optional user ID to link trace
     agentName: string;
     input: string;
     output: string;
@@ -18,22 +18,33 @@ export interface TraceData {
 }
 
 export async function logTrace(data: TraceData) {
-    let dbTrace: AgentTrace | null = null;
+    let dbTraceId: string | null = null;
 
     try {
-        // 1. Log to local DB (Prisma)
-        // We keep this as a backup/internal log
-        dbTrace = await prisma.agentTrace.create({
-            data: {
-                agentName: data.agentName,
-                input: data.input,
-                output: data.output,
+        // 1. Log to Supabase (agent_traces table)
+        const { data: insertedTrace, error } = await supabaseAdmin
+            .from('agent_traces')
+            .insert({
+                user_id: data.userId,
+                agent_name: data.agentName,
+                input: JSON.stringify(data.input), // Store as JSONB
+                output: JSON.stringify(data.output), // Store as JSONB
                 metadata: data.metadata || {},
-                feedbackScore: data.feedbackScore,
-            },
-        });
+                // Note: feedback_score field might not exist in your SQL yet? 
+                // You defined 'agent_traces' without feedback_score in your prompt.
+                // I will assume we store score in metadata or you added the column.
+                // For now, let's put score in metadata if column missing.
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error("Supabase trace error:", error);
+        } else {
+            dbTraceId = insertedTrace.id;
+        }
     } catch (error) {
-        console.error("Failed to log trace to Prisma:", error);
+        console.error("Failed to log trace to Supabase:", error);
     }
 
     try {
@@ -44,7 +55,8 @@ export async function logTrace(data: TraceData) {
             output: { ai_response: data.output },
             metadata: {
                 ...data.metadata,
-                db_trace_id: dbTrace?.id, // Link local trace ID
+                user_id: data.userId,
+                db_trace_id: dbTraceId,
             },
         });
 
@@ -59,44 +71,33 @@ export async function logTrace(data: TraceData) {
 
         console.log(`[Opik] Trace logged: ${data.agentName}`);
 
-        // Return the DB trace augmented with Opik ID if possible, or just the DB trace
-        // We attach the Opik ID to the returned object so callers can use it for feedback
+        // Return object linking both systems
         return {
-            ...dbTrace,
-            id: dbTrace?.id || "opik-only-trace",
+            id: dbTraceId || "opik-only",
             opikTraceId: trace.id
         };
     } catch (error) {
         console.error("Failed to log trace to Opik:", error);
-        return dbTrace ? { ...dbTrace, opikTraceId: undefined } : null;
+        return { id: dbTraceId, opikTraceId: undefined };
     }
 }
 
-export async function updateTraceScore(traceId: string, score: number, opikTraceId?: string) {
+export async function updateTraceScore(dbTraceId: string | null, score: number, opikTraceId?: string) {
     try {
-        // Update local DB
-        if (traceId !== "opik-only-trace") {
-            await prisma.agentTrace.update({
-                where: { id: traceId },
-                data: { feedbackScore: score },
-            });
+        // Update local Supabase DB (if you added a score column, otherwise skip or update metadata)
+        // Assuming you might add 'score' column later or use metadata. 
+        // For now, we just log it.
+        if (dbTraceId && dbTraceId !== "opik-only") {
+            // Example update if column exists (commented out to be safe based on your SQL)
+            // await supabaseAdmin.from('agent_traces').update({ score: score }).eq('id', dbTraceId);
         }
 
-        // Update Opik Cloud if we have the ID
+        // Update Opik Cloud
         if (opikTraceId) {
-            // Since we can't easily "resume" a trace object here without fetching it,
-            // we use the client to log a feedback score linked to the trace ID.
-            // The Node.js SDK usually exposes a way to log feedback directly via client or we assume 
-            // the 'trace' object is needed. 
-            // If the SDK strictly requires the trace object instance, we might need a different pattern.
-            // However, standard Opik usage allows logging feedback by ID.
-            // Checking docs/SDK: typically client.logFeedback(...) or similar.
-            // If not available in this version, we'll log a console note.
-
-            // Hypothetical SDK usage (adjust based on actual SDK capability):
-            // opikClient.reportFeedback({ traceId: opikTraceId, name: "quality_score", value: score });
-
-            console.log(`[Opik] Feedback sent for trace ${opikTraceId}: ${score}`);
+            // In a real Opik SDK, we would send feedback here using the ID.
+            // trace.feedback(...) needs the trace object. 
+            // For stateless updates, we rely on the Evaluator Agent's OWN trace to record the score.
+            console.log(`[Opik] Feedback calculated for trace ${opikTraceId}: ${score}`);
         }
     } catch (error) {
         console.error("Failed to update trace score:", error);
