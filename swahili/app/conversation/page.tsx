@@ -6,6 +6,7 @@ import { SketchButton } from "@/components/shared/SketchButton";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Send, Bot, User } from "lucide-react";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { useConversation } from "@/hooks/useConversation";
 
 // Sketch border that stays within bounds
 function SketchBorder({ className }: { className?: string }) {
@@ -62,18 +63,16 @@ function CheckeredBackground({ className }: { className?: string }) {
 }
 
 export default function Conversation() {
-  const [messages, setMessages] = useState([
-    { role: "assistant", content: "Habari! Jina langu ni Rafiki. Ninaweza kukusaidia kujifunza Kiswahili. (Hello! My name is Rafiki. I can help you learn Swahili.)" },
-  ]);
+  const { messages, sendMessage, isLoading, error } = useConversation();
   const [input, setInput] = useState("");
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    setMessages([...messages, { role: "user", content: input }]);
-    setInput("");
-    setTimeout(() => {
-      setMessages(prev => [...prev, { role: "assistant", content: "Nzuri sana! (Very good!) Keep practicing!" }]);
-    }, 1000);
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
+    
+    const messageToSend = input;
+    setInput(""); // Clear input immediately
+    
+    await sendMessage(messageToSend);
   };
 
   return (
@@ -107,10 +106,25 @@ export default function Conversation() {
                       ? "bg-accent/5" 
                       : "bg-card"
                   }`}>
-                    <p className="font-hand-secondary text-sm leading-relaxed">{msg.content}</p>
+                    <p className="font-hand-secondary text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                   </div>
                 </div>
               ))}
+              {isLoading && (
+                <div className="flex gap-2 sm:gap-3 animate-fade-in">
+                  <div className="relative w-9 h-9 sm:w-10 sm:h-10 sketch-border flex items-center justify-center flex-shrink-0 bg-card">
+                    <Bot size={16} className="text-foreground/70" />
+                  </div>
+                  <div className="relative max-w-[80%] sm:max-w-[75%] p-3 sm:p-4 sketch-border bg-card">
+                    <p className="font-hand-secondary text-sm text-muted-foreground animate-pulse">Rafiki is typing...</p>
+                  </div>
+                </div>
+              )}
+              {error && (
+                <div className="text-center p-2">
+                  <span className="text-destructive text-sm font-hand-secondary bg-destructive/10 px-3 py-1 rounded-full">{error}</span>
+                </div>
+              )}
             </div>
             
             {/* Input area with sketch style */}
@@ -119,14 +133,16 @@ export default function Conversation() {
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                  placeholder="Andika ujumbe... (Type a message...)"
-                  className="flex-1 px-4 py-2.5 sm:py-3 sketch-border bg-card font-hand-secondary text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 rounded-sm"
+                  onKeyDown={(e) => e.key === "Enter" && !isLoading && handleSend()}
+                  placeholder={isLoading ? "Please wait..." : "Andika ujumbe... (Type a message...)"}
+                  disabled={isLoading}
+                  className="flex-1 px-4 py-2.5 sm:py-3 sketch-border bg-card font-hand-secondary text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 rounded-sm disabled:opacity-50"
                 />
                 <SketchButton 
                   variant="accent" 
-                  onClick={handleSend} 
-                  className="rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center p-0 flex-shrink-0"
+                  onClick={handleSend}
+                  disabled={isLoading || !input.trim()}
+                  className="rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center p-0 flex-shrink-0 disabled:opacity-50"
                 >
                   <Send size={16} className="sm:w-[18px] sm:h-[18px]" />
                 </SketchButton>
