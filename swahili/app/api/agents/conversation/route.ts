@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { chatWithRafiki } from '@/lib/agents/conversation';
-import { getUserFromRequest } from '@/lib/auth-supabase';
+import { getUserFromRequest } from '../../../../lib/auth-supabase';
 
 export async function POST(req: NextRequest) {
     // 1. Auth Check
