@@ -1,15 +1,14 @@
 import { supabaseAdmin } from '@/lib/supabase-server';
 import { Opik } from 'opik';
 
-// Initialize Opik client (server-side only)
 const opikClient = new Opik({
-    workspaceName: process.env.OPIK_WORKSPACE,
-    projectName: process.env.OPIK_PROJECT_NAME,
-    apiKey: process.env.OPIK_API_KEY,
+    workspaceName: process.env.OPIK_WORKSPACE!,
+    projectName: process.env.OPIK_PROJECT_NAME!,
+    apiKey: process.env.OPIK_API_KEY!,
 });
 
 export interface TraceData {
-    userId?: string; // Optional user ID to link trace
+    userId?: string;
     agentName: string;
     input: string;
     output: string;
@@ -18,88 +17,108 @@ export interface TraceData {
 }
 
 export async function logTrace(data: TraceData) {
-    let dbTraceId: string | null = null;
+    const results = await Promise.allSettled([
+        logToSupabase(data),
+        logToOpik(data)
+    ]);
 
+    const [supabaseResult, opikResult] = results;
+
+    return {
+        id: supabaseResult.status === 'fulfilled' ? supabaseResult.value : null,
+        opikTraceId: opikResult.status === 'fulfilled' ? opikResult.value : undefined,
+        errors: results
+            .filter(r => r.status === 'rejected')
+            .map(r => (r as PromiseRejectedResult).reason)
+    };
+}
+
+async function logToSupabase(data: TraceData): Promise<string> {
+    const { data: insertedTrace, error } = await supabaseAdmin
+        .from('agent_traces')
+        .insert({
+            user_id: data.userId,
+            agent_name: data.agentName,
+            input: data.input,
+            output: data.output,
+            metadata: data.metadata || {},
+        })
+        .select('id')
+        .single();
+
+    if (error) throw new Error(`Supabase error: ${error.message}`);
+    return insertedTrace.id;
+}
+
+async function logToOpik(data: TraceData): Promise<string> {
+    // Build feedback scores array if provided - using correct FeedbackScore interface
+    const feedbackScores = data.feedbackScore !== undefined ? [
+        {
+            name: "quality_score",
+            value: data.feedbackScore,
+            source: "sdk" as const,
+        }
+    ] : undefined;
+
+    const trace = opikClient.trace({
+        name: data.agentName,
+        input: { message: data.input },
+        output: { response: data.output },
+        metadata: {
+            ...data.metadata,
+            user_id: data.userId,
+        },
+        feedbackScores: feedbackScores,
+    });
+
+    await trace.end();
+    return trace.id;
+}
+
+export async function updateTraceScore(
+    dbTraceId: string,
+    score: number,
+    metadata?: Record<string, any>
+) {
     try {
-        // 1. Log to Supabase (agent_traces table)
-        const { data: insertedTrace, error } = await supabaseAdmin
+        await supabaseAdmin
             .from('agent_traces')
-            .insert({
-                user_id: data.userId,
-                agent_name: data.agentName,
-                input: JSON.stringify(data.input), // Store as JSONB
-                output: JSON.stringify(data.output), // Store as JSONB
-                metadata: data.metadata || {},
-                // Note: feedback_score field might not exist in your SQL yet? 
-                // You defined 'agent_traces' without feedback_score in your prompt.
-                // I will assume we store score in metadata or you added the column.
-                // For now, let's put score in metadata if column missing.
+            .update({
+                metadata: { score, ...metadata }
             })
-            .select()
-            .single();
-
-        if (error) {
-            console.error("Supabase trace error:", error);
-        } else {
-            dbTraceId = insertedTrace.id;
-        }
+            .eq('id', dbTraceId);
     } catch (error) {
-        console.error("Failed to log trace to Supabase:", error);
-    }
-
-    try {
-        // 2. Log to Opik (Cloud Observability)
-        const trace = opikClient.trace({
-            name: data.agentName,
-            input: { user_message: data.input },
-            output: { ai_response: data.output },
-            metadata: {
-                ...data.metadata,
-                user_id: data.userId,
-                db_trace_id: dbTraceId,
-            },
-        });
-
-        if (data.feedbackScore !== undefined) {
-            trace.feedback({
-                name: "quality_score",
-                value: data.feedbackScore,
-            });
-        }
-
-        await trace.end();
-
-        console.log(`[Opik] Trace logged: ${data.agentName}`);
-
-        // Return object linking both systems
-        return {
-            id: dbTraceId || "opik-only",
-            opikTraceId: trace.id
-        };
-    } catch (error) {
-        console.error("Failed to log trace to Opik:", error);
-        return { id: dbTraceId, opikTraceId: undefined };
+        console.error("Failed to update trace score:", error);
+        throw error;
     }
 }
 
-export async function updateTraceScore(dbTraceId: string | null, score: number, opikTraceId?: string) {
+export async function logDelayedFeedback(
+    originalTraceData: TraceData,
+    feedbackScore: number,
+    feedbackName: string = "delayed_feedback"
+) {
     try {
-        // Update local Supabase DB (if you added a score column, otherwise skip or update metadata)
-        // Assuming you might add 'score' column later or use metadata. 
-        // For now, we just log it.
-        if (dbTraceId && dbTraceId !== "opik-only") {
-            // Example update if column exists (commented out to be safe based on your SQL)
-            // await supabaseAdmin.from('agent_traces').update({ score: score }).eq('id', dbTraceId);
-        }
+        const trace = opikClient.trace({
+            name: `${originalTraceData.agentName}_feedback`,
+            input: { original_input: originalTraceData.input },
+            output: { feedback_provided: true },
+            metadata: {
+                ...originalTraceData.metadata,
+                feedback_type: "delayed",
+                user_id: originalTraceData.userId,
+            },
+            feedbackScores: [{
+                name: feedbackName,
+                value: feedbackScore,
+                source: "sdk" as const,
+            }],
+        });
 
-        // Update Opik Cloud
-        if (opikTraceId) {
-            // In a real Opik SDK, we would send feedback here using the ID.
-            // trace.feedback(...) needs the trace object. 
-            // For stateless updates, we rely on the Evaluator Agent's OWN trace to record the score.
-            console.log(`[Opik] Feedback calculated for trace ${opikTraceId}: ${score}`);
-        }
+        await trace.end();
+        return trace.id;
     } catch (error) {
-        console.error("Failed to update trace score:", error);
+        console.error("Failed to log delayed feedback:", error);
+        throw error;
     }
 }
