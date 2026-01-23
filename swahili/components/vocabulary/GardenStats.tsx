@@ -3,6 +3,7 @@ import { Droplets, Flame, Trophy, Sparkles, Target } from "lucide-react";
 
 interface GardenStatsProps {
   totalWords: number;
+  totalVocabulary: number;
   masteredWords: number;
   streakDays: number;
   todayXP: number;
@@ -11,12 +12,13 @@ interface GardenStatsProps {
 
 export function GardenStats({ 
   totalWords, 
+  totalVocabulary,
   masteredWords, 
   streakDays, 
   todayXP,
   waterProgress 
 }: GardenStatsProps) {
-  const masteryPercentage = Math.round((masteredWords / totalWords) * 100);
+  const masteryPercentage = totalWords > 0 ? Math.round((masteredWords / totalWords) * 100) : 0;
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -73,8 +75,13 @@ export function GardenStats({
                   style={{ width: `${masteryPercentage}%` }}
                 />
               </div>
-              <span className="font-hand-secondary text-xs text-muted-foreground">{masteryPercentage}%</span>
+              <span className="font-hand-secondary text-xs text-muted-foreground">
+                {masteryPercentage}% of {totalWords}
+              </span>
             </div>
+          </div>
+          <div className="mt-2 text-xs text-muted-foreground">
+            All words: {totalVocabulary}
           </div>
         </div>
       </div>

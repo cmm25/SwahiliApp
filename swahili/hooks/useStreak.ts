@@ -86,8 +86,12 @@ export function useStreak(): UseStreakReturn {
                 setStreakData({ currentStreak: 0, longestStreak: 0, lastActivityDate: null, totalXp: 0 });
             }
         } catch (err) {
+            const message = getErrorMessage(err);
+            if (isAbortError(message)) {
+                return;
+            }
             setError(err as Error);
-            console.error("Error fetching streak:", JSON.stringify(err, null, 2));
+            console.error("Error fetching streak:", message);
         } finally {
             setIsLoading(false);
         }
@@ -122,7 +126,11 @@ export function useStreak(): UseStreakReturn {
 
             return { error: null };
         } catch (err) {
-            console.error("Error logging activity:", err);
+            const message = getErrorMessage(err);
+            if (isAbortError(message)) {
+                return { error: null };
+            }
+            console.error("Error logging activity:", message);
             return { error: err as Error };
         }
     };
@@ -145,7 +153,11 @@ export function useStreak(): UseStreakReturn {
 
             return { error: null };
         } catch (err) {
-            console.error("Error adding XP:", err);
+            const message = getErrorMessage(err);
+            if (isAbortError(message)) {
+                return { error: null };
+            }
+            console.error("Error adding XP:", message);
             return { error: err as Error };
         }
     };
@@ -160,4 +172,21 @@ export function useStreak(): UseStreakReturn {
         addXp,
         refetch: fetchStreak,
     };
+}
+
+function getErrorMessage(err: unknown): string {
+    if (err instanceof Error) {
+        return err.message;
+    }
+    if (typeof err === "object" && err !== null && "message" in err) {
+        const value = (err as { message?: unknown }).message;
+        if (typeof value === "string") {
+            return value;
+        }
+    }
+    return String(err);
+}
+
+function isAbortError(message: string): boolean {
+    return message.includes("AbortError");
 }

@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 
 export function useTextToSpeech() {
+  const { session } = useAuth();
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -19,6 +21,10 @@ export function useTextToSpeech() {
 
   const speak = useCallback(async (text: string) => {
     try {
+      if (!session?.access_token) {
+        throw new Error('Not authenticated');
+      }
+
       // Stop any currently playing audio
       if (audioRef.current) {
         audioRef.current.pause();
@@ -32,6 +38,7 @@ export function useTextToSpeech() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ text }),
       });
@@ -67,7 +74,7 @@ export function useTextToSpeech() {
       setIsLoading(false);
       setIsPlaying(false);
     }
-  }, []);
+  }, [session?.access_token]);
 
   const stop = useCallback(() => {
     if (audioRef.current) {

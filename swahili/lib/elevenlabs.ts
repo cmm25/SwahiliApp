@@ -4,7 +4,7 @@ const elevenlabs = new ElevenLabsClient({
     apiKey: process.env.ELEVENLABS_API_KEY,
 });
 
-export async function generateSpeech(text: string, voiceId = "21m00Tcm4TlvDq8ikWAM") {
+export async function generateSpeech(text: string, voiceId = "u0TsaWvt0v8migutHM3M") {
     try {
         const audioStream = await elevenlabs.textToSpeech.convert(voiceId, {
             text,
