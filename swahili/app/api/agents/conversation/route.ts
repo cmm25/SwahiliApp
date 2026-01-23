@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 3. Run Agent
-        const reply = await chatWithRafiki(message, history || []);
+        const reply = await chatWithRafiki(message, history || [], user.id);
 
         // 4. Response
         return NextResponse.json({
