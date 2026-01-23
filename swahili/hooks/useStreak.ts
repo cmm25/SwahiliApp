@@ -24,7 +24,7 @@ interface UseStreakReturn {
 const getUntypedClient = () => supabase as any;
 
 export function useStreak(): UseStreakReturn {
-    const { user } = useAuth();
+    const { user, session } = useAuth();
     const [streakData, setStreakData] = useState<StreakData>({
         currentStreak: 0,
         longestStreak: 0,
@@ -101,8 +101,8 @@ export function useStreak(): UseStreakReturn {
         fetchStreak();
     }, [fetchStreak]);
 
-    const logActivity = async () => {
-        if (!user) {
+    const logActivity = useCallback(async () => {
+        if (!user || !session?.access_token) {
             return { error: new Error("Not authenticated") };
         }
 
@@ -133,7 +133,7 @@ export function useStreak(): UseStreakReturn {
             console.error("Error logging activity:", message);
             return { error: err as Error };
         }
-    };
+    }, [fetchStreak, session?.access_token, user]);
 
     const addXp = async (amount: number) => {
         if (!user) {

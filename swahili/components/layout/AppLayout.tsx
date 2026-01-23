@@ -38,15 +38,17 @@ const navItems = [
 
 export function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
-  const { signOut } = useAuth();
+  const { signOut, user, isLoading } = useAuth();
   const { toast } = useToast();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { streak, xp, logActivity } = useStreak();
 
   // Log activity when user visits the app
   useEffect(() => {
-    logActivity();
-  }, [logActivity]);
+    if (!isLoading && user?.id) {
+      logActivity();
+    }
+  }, [isLoading, logActivity, user?.id]);
 
   const handleLogout = async () => {
     await signOut();
