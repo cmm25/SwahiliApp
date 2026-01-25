@@ -1,32 +1,35 @@
 import { cn } from "@/lib/utils";
-import { Volume2, Heart, Check, Sparkles, Star } from "lucide-react";
-import { useState } from "react";
+import { Heart, Check, Sparkles, Star, Volume2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { VocabularyWord } from "@/lib/agents/teaching-shared";
 
 interface WordCardProps {
-  word: {
-    id: number;
-    swahili: string;
-    english: string;
-    pronunciation: string;
-    categoryEmoji: string;
-    stage: "seed" | "sprout" | "sapling" | "flower" | "tree";
-    lastReviewed: string;
-    timesCorrect: number;
-    isFavorite: boolean;
-  };
+  word: VocabularyWord;
   stageInfo: {
     icon: React.ReactNode;
     label: string;
     color: string;
     bgColor: string;
   };
-  onToggleFavorite: (id: number) => void;
+  onToggleFavorite: (id: string) => void;
+  onPlayAudio?: (text: string) => void;
   index: number;
 }
 
-export function WordCard({ word, stageInfo, onToggleFavorite, index }: WordCardProps) {
+export function WordCard({ word, stageInfo, onToggleFavorite, onPlayAudio, index }: WordCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [showSparkle, setShowSparkle] = useState(false);
+  const lastReviewedLabel = useMemo(() => {
+    const source = word.last_practiced ?? word.created_at;
+    if (!source) {
+      return "Not reviewed";
+    }
+    const date = new Date(source);
+    if (Number.isNaN(date.getTime())) {
+      return "Not reviewed";
+    }
+    return date.toLocaleDateString();
+  }, [word.last_practiced, word.created_at]);
 
   const handleFlip = () => {
     setIsFlipped(!isFlipped);
@@ -87,14 +90,14 @@ export function WordCard({ word, stageInfo, onToggleFavorite, index }: WordCardP
             onClick={(e) => { e.stopPropagation(); onToggleFavorite(word.id); }}
             className={cn(
               "absolute top-3 left-3 z-10 transition-all duration-300",
-              word.isFavorite ? "scale-100" : "scale-0 group-hover:scale-100"
+              word.is_favorite ? "scale-100" : "scale-0 group-hover:scale-100"
             )}
           >
             <Heart 
               size={20} 
               className={cn(
                 "transition-all duration-300",
-                word.isFavorite 
+                word.is_favorite 
                   ? "fill-destructive text-destructive animate-bounce-subtle" 
                   : "text-muted-foreground hover:text-destructive hover:scale-110"
               )} 
@@ -110,7 +113,7 @@ export function WordCard({ word, stageInfo, onToggleFavorite, index }: WordCardP
                 "bg-gradient-to-br from-muted/30 to-muted/10",
                 "group-hover:scale-110 group-hover:rotate-3"
               )}>
-                {word.categoryEmoji}
+                📚
               </div>
               
               {/* Sparkle effect */}
@@ -130,19 +133,23 @@ export function WordCard({ word, stageInfo, onToggleFavorite, index }: WordCardP
               {word.english}
             </p>
 
-            {/* Pronunciation */}
-            <button 
-              onClick={(e) => e.stopPropagation()}
-              className="w-full flex items-center justify-center gap-2 py-2 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/30"
-            >
-              <Volume2 size={14} />
-              <span className="font-hand-secondary text-sm">{word.pronunciation}</span>
-            </button>
+            {onPlayAudio && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPlayAudio(word.swahili);
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/30"
+              >
+                <Volume2 size={14} />
+                <span className="font-hand-secondary text-sm">Listen</span>
+              </button>
+            )}
 
             {/* Stats footer */}
             <div className="flex items-center justify-between pt-3 mt-2 border-t border-border/20">
               <span className="font-hand-secondary text-xs text-muted-foreground">
-                {word.lastReviewed}
+                {lastReviewedLabel}
               </span>
               
               {/* Times correct with progress ring */}
@@ -164,14 +171,14 @@ export function WordCard({ word, stageInfo, onToggleFavorite, index }: WordCardP
                       stroke="hsl(var(--success))"
                       strokeWidth="2"
                       fill="none"
-                      strokeDasharray={`${Math.min(word.timesCorrect * 5, 63)} 63`}
+                      strokeDasharray="0 63"
                       className="transition-all duration-500"
                     />
                   </svg>
                   <Check size={10} className="absolute inset-0 m-auto text-success" />
                 </div>
                 <span className="font-hand-secondary text-xs text-success font-medium">
-                  {word.timesCorrect}x
+                  —
                 </span>
               </div>
             </div>
@@ -190,7 +197,7 @@ export function WordCard({ word, stageInfo, onToggleFavorite, index }: WordCardP
         )}>
           <p className="font-hand-secondary text-sm text-muted-foreground mb-2">Example:</p>
           <p className="font-hand text-xl text-center text-accent leading-relaxed">
-            "{word.swahili} is used in sentences like..."
+            "{word.english}"
           </p>
           <p className="font-hand-secondary text-xs text-muted-foreground mt-4">Tap to flip back</p>
         </div>
