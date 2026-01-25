@@ -7,7 +7,7 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // 1. Client for Server Components / Server Actions (User Context)
-export const createClient = (cookieStore: ReturnType<typeof cookies>) => {
+export const createClient = (cookieStore: Awaited<ReturnType<typeof cookies>>) => {
     return createServerClient(
         supabaseUrl,
         supabaseKey,
