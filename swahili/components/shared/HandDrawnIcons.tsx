@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactElement } from "react";
 import { cn } from "@/lib/utils";
 
 interface IconProps {
@@ -260,7 +261,7 @@ export function CornerFlourish({ className, position = "top-left" }: { className
 
 // Illustrated lesson category icons
 export function CategoryIcon({ category, size = 40, className }: { category: string; size?: number; className?: string }) {
-  const icons: Record<string, JSX.Element> = {
+  const icons: Record<string, ReactElement> = {
     greetings: (
       <g>
         <circle cx="20" cy="20" r="15" className="fill-accent/20 stroke-accent" strokeWidth="2" />
