@@ -1,4 +1,7 @@
-import { Link, useLocation } from "react-router-dom";
+'use client';
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { 
   Home, 
@@ -31,7 +34,7 @@ interface MainLayoutProps {
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
-  const location = useLocation();
+  const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Mock user data - will come from backend later
@@ -50,7 +53,7 @@ export function MainLayout({ children }: MainLayoutProps) {
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b-2 border-foreground">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           {/* Logo with mascot */}
-          <Link to="/dashboard" className="flex items-center gap-2 group">
+          <Link href="/dashboard" className="flex items-center gap-2 group">
             <div className="relative">
               <LionMascot size={36} className="transition-transform group-hover:scale-110" />
               <Sparkles 
@@ -68,11 +71,11 @@ export function MainLayout({ children }: MainLayoutProps) {
           <nav className="hidden lg:flex items-center gap-1">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = location.pathname === item.path;
+              const isActive = pathname === item.path;
               return (
                 <Link
                   key={item.path}
-                  to={item.path}
+                  href={item.path}
                   className={cn(
                     "flex items-center gap-2 px-4 py-2 font-hand-secondary text-base transition-all relative group",
                     isActive 
@@ -133,11 +136,11 @@ export function MainLayout({ children }: MainLayoutProps) {
             <div className="container mx-auto py-2">
               {navItems.map((item, index) => {
                 const Icon = item.icon;
-                const isActive = location.pathname === item.path;
+                const isActive = pathname === item.path;
                 return (
                   <Link
                     key={item.path}
-                    to={item.path}
+                    href={item.path}
                     onClick={() => setMobileMenuOpen(false)}
                     className={cn(
                       "flex items-center gap-3 px-4 py-3 font-hand-secondary transition-all animate-fade-in-up",
