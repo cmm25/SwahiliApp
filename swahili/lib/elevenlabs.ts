@@ -9,10 +9,10 @@ export async function generateSpeech(text: string, voiceId = "u0TsaWvt0v8migutHM
         const audioStream = await elevenlabs.textToSpeech.convert(voiceId, {
             text,
             modelId: "eleven_multilingual_v2",
-            output_format: "mp3_44100_128",
-            voice_settings: {
+            outputFormat: "mp3_44100_128",
+            voiceSettings: {
                 stability: 0.5,
-                similarity_boost: 0.75,
+                similarityBoost: 0.75,
             },
         });
 
