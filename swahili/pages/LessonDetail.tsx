@@ -39,6 +39,14 @@ type VocabularyCategoryRow = {
   category: string | null;
 };
 
+type VocabularyWordRow = {
+  id: string;
+  swahili: string;
+  english: string;
+  category: string | null;
+  created_at: string | null;
+};
+
 type FloatingParticleSpec = {
   delay: number;
   size: number;
@@ -196,7 +204,7 @@ export default function LessonDetail() {
         return;
       }
 
-      const sortedWords = (words ?? []).slice(0, 20);
+      const sortedWords = ((words ?? []) as VocabularyWordRow[]).slice(0, 20);
       const steps: LessonStep[] = sortedWords.map((word, index) => ({
         id: index + 1,
         type: "vocab",
