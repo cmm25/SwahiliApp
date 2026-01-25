@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { 
   LayoutDashboard, 
   BookOpen, 
@@ -38,6 +38,7 @@ const navItems = [
 
 export function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { signOut, user, isLoading } = useAuth();
   const { toast } = useToast();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -56,6 +57,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       title: "Kwaheri!",
       description: "You have been logged out.",
     });
+    router.replace("/");
   };
 
   const NavContent = () => (
