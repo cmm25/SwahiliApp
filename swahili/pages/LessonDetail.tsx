@@ -140,7 +140,7 @@ export default function LessonDetail() {
         return;
       }
 
-      const { data: categoryRows, error: categoryError } = await supabase
+      const { data: categoryRows, error: categoryError } = await (supabase as any)
         .from("vocabulary_words")
         .select("category");
 
@@ -182,7 +182,7 @@ export default function LessonDetail() {
         totalWords,
       });
 
-      const { data: words, error } = await supabase
+      const { data: words, error } = await (supabase as any)
         .from("vocabulary_words")
         .select("id, swahili, english, category, created_at")
         .eq("category", selectedCategory);
