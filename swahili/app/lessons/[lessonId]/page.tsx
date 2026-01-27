@@ -7,18 +7,21 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { SketchCard } from "@/components/shared/SketchCard";
 import { SketchButton } from "@/components/shared/SketchButton";
-import { CategoryIcon, SketchStar, SketchFlame } from "@/components/shared/HandDrawnIcons";
+import { SketchStar, SketchFlame } from "@/components/shared/HandDrawnIcons";
 import { HighlightMarker, FloatingShapes } from "@/components/shared/DecorativeElements";
 import { WobblyProgress, DoodleStarburst, HandDrawnBorder, CornerSquiggle } from "@/components/shared/Doodle";
 import { ArrowLeft, ArrowRight, Volume2, Lightbulb, Target, Sparkles, Zap, BookOpen, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { getLessonById } from "@/lib/lesson-structure";
+import { useStreak } from "@/hooks/useStreak";
 
 type LessonMeta = {
   title: string;
-  subtitle: string;
-  category: string;
+  description: string;
+  emoji: string;
+  categories: string[];
   xp: number;
   totalWords: number;
 };
@@ -34,10 +37,6 @@ type LessonStep = {
     example?: { swahili: string; english: string };
     tip?: string;
   };
-};
-
-type VocabularyCategoryRow = {
-  category: string | null;
 };
 
 type VocabularyWordRow = {
@@ -124,6 +123,7 @@ export default function LessonDetailPage() {
   const params = useParams<{ lessonId: string }>();
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
+  const { addXp } = useStreak();
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -131,6 +131,7 @@ export default function LessonDetailPage() {
   const [lessonSteps, setLessonSteps] = useState<LessonStep[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lessonMeta, setLessonMeta] = useState<LessonMeta | null>(null);
+  const [hasAwardedXp, setHasAwardedXp] = useState(false);
   const [particles, setParticles] = useState<FloatingParticleSpec[]>([]);
   const [confetti, setConfetti] = useState<ConfettiSpec[]>([]);
 
@@ -202,6 +203,16 @@ export default function LessonDetailPage() {
         return;
       }
 
+      const lessonDefinition = getLessonById(lessonId);
+
+      if (!isMounted) return;
+
+      if (!lessonDefinition) {
+        setLessonSteps([]);
+        setIsLoading(false);
+        return;
+      }
+
       const { data: categoryRows, error: categoryError } = await vocabularyClient
         .from("vocabulary_words")
         .select("category");
@@ -215,39 +226,24 @@ export default function LessonDetailPage() {
         return;
       }
 
-      const categoryCounts = (categoryRows as VocabularyCategoryRow[] | null ?? [])
-        .reduce<Record<string, number>>((acc, row) => {
-          if (!row.category) return acc;
-          acc[row.category] = (acc[row.category] ?? 0) + 1;
-          return acc;
-        }, {});
-
-      const categories = Object.keys(categoryCounts).sort((a, b) => a.localeCompare(b));
-      const selectedCategory = categories[lessonId - 1];
-
-      if (!selectedCategory) {
-        setLessonSteps([]);
-        setIsLoading(false);
-        return;
-      }
-
-      const totalWords = categoryCounts[selectedCategory] ?? 0;
-      const title = selectedCategory.replace(/[-_]/g, " ");
-      const subtitle = title.charAt(0).toUpperCase() + title.slice(1);
-      const xp = Math.min(150, Math.max(50, totalWords * 5));
-
-      setLessonMeta({
-        title: subtitle,
-        subtitle,
-        category: selectedCategory,
-        xp,
-        totalWords,
+      const availableCategories = new Set(
+        (categoryRows as { category: string | null }[] | null ?? [])
+          .map((row) => row.category)
+          .filter((category): category is string => Boolean(category))
+      );
+      const resolvedCategories = lessonDefinition.categories.flatMap((category) => {
+        if (availableCategories.has(category)) return [category];
+        const normalized = category.replace(/-(basic|advanced)$/u, "");
+        if (availableCategories.has(normalized)) return [normalized];
+        return [];
       });
+
+      const categoriesForLesson = resolvedCategories.length ? resolvedCategories : lessonDefinition.categories;
 
       const { data: words, error } = await vocabularyClient
         .from("vocabulary_words")
         .select("id, swahili, english, category, created_at")
-        .eq("category", selectedCategory);
+        .in("category", categoriesForLesson);
 
       if (!isMounted) return;
 
@@ -258,6 +254,8 @@ export default function LessonDetailPage() {
         return;
       }
 
+      const totalWords = (words ?? []).length;
+      const xp = Math.min(150, Math.max(50, totalWords * 5));
       const sortedWords = ((words ?? []) as VocabularyWordRow[]).slice(0, 20);
       const steps: LessonStep[] = sortedWords.map((word, index) => ({
         id: index + 1,
@@ -269,9 +267,18 @@ export default function LessonDetailPage() {
         },
       }));
 
+      setLessonMeta({
+        title: lessonDefinition.title,
+        description: lessonDefinition.description,
+        emoji: lessonDefinition.emoji,
+        categories: lessonDefinition.categories,
+        xp,
+        totalWords,
+      });
       setLessonSteps(steps);
       setCurrentStep(0);
       setCompletedSteps([]);
+      setHasAwardedXp(false);
       setIsLoading(false);
     }
 
@@ -301,9 +308,13 @@ export default function LessonDetailPage() {
     }
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     if (!completedSteps.includes(currentStep)) {
       setCompletedSteps([...completedSteps, currentStep]);
+    }
+    if (!hasAwardedXp && lessonMeta?.xp) {
+      setHasAwardedXp(true);
+      await addXp(lessonMeta.xp);
     }
     setShowCelebration(true);
   };
@@ -327,6 +338,19 @@ export default function LessonDetailPage() {
     }
   }, [currentLesson]);
 
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="max-w-2xl mx-auto relative">
+          <LessonBackground particles={particles} />
+          <div className="relative z-10 text-center py-20">
+            <p className="font-hand text-xl text-muted-foreground">Loading lesson...</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   if (!lessonMeta) {
     return (
       <AppLayout>
@@ -340,19 +364,6 @@ export default function LessonDetailPage() {
               <ArrowLeft size={18} />
               Back to Lessons
             </SketchButton>
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <AppLayout>
-        <div className="max-w-2xl mx-auto relative">
-          <LessonBackground particles={particles} />
-          <div className="relative z-10 text-center py-20">
-            <p className="font-hand text-xl text-muted-foreground">Loading lesson...</p>
           </div>
         </div>
       </AppLayout>
@@ -394,7 +405,7 @@ export default function LessonDetailPage() {
               <div className="flex items-center gap-3 flex-1">
                 <div className="relative">
                   <div className="w-12 h-12 rounded-xl border-2 border-accent/30 bg-gradient-to-br from-accent/20 to-accent/5 flex items-center justify-center shadow-lg">
-                    <CategoryIcon category={lessonMeta.category} size={28} />
+                    <span className="text-2xl">{lessonMeta.emoji}</span>
                   </div>
                   <div className="absolute -top-1 -right-1 animate-spin [animation-duration:8s]">
                     <DoodleStarburst size={16} className="text-warning" />
@@ -404,7 +415,7 @@ export default function LessonDetailPage() {
                   <h1 className="font-hand text-2xl leading-tight">
                     <HighlightMarker color="accent">{lessonMeta.title}</HighlightMarker>
                   </h1>
-                  <p className="font-hand-secondary text-sm text-muted-foreground">{lessonMeta.subtitle}</p>
+                  <p className="font-hand-secondary text-sm text-muted-foreground">{lessonMeta.description}</p>
                 </div>
               </div>
 
