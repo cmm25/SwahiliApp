@@ -111,7 +111,8 @@ export async function logTrace(data: TraceData) {
 // Simplified Supabase logging - only essential fields
 async function logToSupabase(data: TraceData): Promise<string> {
     try {
-        if (!data.userId) {
+        const resolvedUserId = data.userId ?? process.env.PUBLIC_TRACE_USER_ID;
+        if (!resolvedUserId) {
             console.warn('⚠️ Skipping Supabase log because userId is missing');
             return `skipped-no-user-${Date.now()}`;
         }
@@ -119,7 +120,7 @@ async function logToSupabase(data: TraceData): Promise<string> {
         const { data: insertedTrace, error } = await supabaseService
             .from('agent_traces')
             .insert({
-                user_id: data.userId,           // Required
+                user_id: resolvedUserId,           // Required
                 agent_name: data.agentName,     // Required
                 input: data.input,              // Required
                 output: data.output,            // Required

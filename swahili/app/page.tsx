@@ -61,19 +61,6 @@ const Index = () => {
           <span>Swahili</span>
         </div>
 
-        <div className="hidden md:flex gap-6 lg:gap-10 font-hand-secondary text-base lg:text-lg text-foreground">
-          {['Nyumbani', 'Jifunze', 'Kuhusu', 'Wasiliana'].map((item, i) => (
-            <a
-              key={item}
-              href="#"
-              className="relative group opacity-0 animate-fade-in-up hover:text-accent transition-colors duration-300"
-              style={{ animationDelay: `${0.3 + i * 0.1}s`, animationFillMode: 'forwards' }}
-            >
-              {item}
-              <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-foreground transition-all duration-300 group-hover:w-full" style={{ borderRadius: '2px' }} />
-            </a>
-          ))}
-        </div>
         {/* Mobile menu button */}
         <button className="md:hidden text-foreground p-2 opacity-0 animate-fade-in-up" style={{ animationDelay: '0.5s', animationFillMode: 'forwards' }}>
           <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

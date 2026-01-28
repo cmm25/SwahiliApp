@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { BookOpen, Sparkles, RefreshCw, Bot, ExternalLink, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HandDrawnBorder, DoodleStarburst, CornerSquiggle } from "@/components/shared/Doodle";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CuratedArticle {
   url: string;
@@ -40,10 +41,23 @@ export function DailyArticleFeature({ className }: DailyArticleFeatureProps) {
 
       try {
         console.log("[DailyArticleFeature] Calling article-agent curate...");
+
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        if (!accessToken) {
+          console.warn("[DailyArticleFeature] No session found, using fallback article");
+          setDailyArticle(FALLBACK_ARTICLE);
+          setTopic("");
+          setIsLoading(false);
+          return;
+        }
         
         const response = await fetch("/api/article-agent-proxy", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
           body: JSON.stringify({ action: "curate" }),
           cache: "no-store",
         });

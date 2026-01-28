@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { logTrace } from "@/lib/opik";
+import { getUserFromRequest } from "@/lib/auth-supabase";
 
 const FIRECRAWL_API_URL = "https://api.firecrawl.dev/v1/search";
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
@@ -118,7 +119,14 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
   let traceInput = "action: unknown";
   let traceTopic = "";
+  let userId: string | undefined;
   try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    userId = user.id;
+
     const body = await request.json();
     const { action } = body;
     traceInput = `action: ${action || "unknown"}`;
@@ -148,6 +156,7 @@ export async function POST(request: NextRequest) {
         console.log("[article-agent] Cache hit for daily article");
         void logTrace({
           agentName: "article-agent",
+          userId,
           input: `action: curate | topic: ${todaysTopic}`,
           output: dailyCache!.data.title,
           metadata: {
@@ -177,6 +186,7 @@ export async function POST(request: NextRequest) {
       if (articles.length === 0) {
         void logTrace({
           agentName: "article-agent",
+          userId,
           input: `action: curate | topic: ${todaysTopic}`,
           output: "No daily article found",
           metadata: {
@@ -210,6 +220,7 @@ export async function POST(request: NextRequest) {
 
       void logTrace({
         agentName: "article-agent",
+        userId,
         input: `action: curate | topic: ${todaysTopic}`,
         output: article.title,
         metadata: {
@@ -248,6 +259,7 @@ export async function POST(request: NextRequest) {
       const articles = await searchArticles(query, firecrawlApiKey);
       void logTrace({
         agentName: "article-agent",
+        userId,
         input: `action: search | query: ${query}`,
         output: `results: ${articles.length}`,
         metadata: {
@@ -273,6 +285,7 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : "Unknown error";
     void logTrace({
       agentName: "article-agent",
+      userId,
       input: traceInput + (traceTopic ? ` | topic: ${traceTopic}` : ""),
       output: `error: ${message}`,
       metadata: {
