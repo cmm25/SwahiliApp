@@ -53,6 +53,9 @@ export default function Vocabulary() {
   const [practiceNotice, setPracticeNotice] = useState<string | null>(null);
   const [totalVocabulary, setTotalVocabulary] = useState(0);
 
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
   useEffect(() => {
     let isMounted = true;
     fetchVocabulary().then(data => {
@@ -70,7 +73,15 @@ export default function Vocabulary() {
     };
   }, [fetchVocabulary, fetchVocabularyCount]);
 
-  const filteredWords = words;
+  const filteredWords = useMemo(() => 
+    selectedCategory ? words.filter(w => w.category === selectedCategory) : words,
+    [words, selectedCategory]
+  );
+  
+  const categories = useMemo(() => 
+    [...new Set(words.map(w => w.category).filter((c): c is string => Boolean(c)))].sort(), 
+    [words]
+  );
 
   // Practice mode handlers
   const wordsNeedingWater = useMemo(() => filterDueWords(words), [filterDueWords, words]);
@@ -85,44 +96,50 @@ export default function Vocabulary() {
 
 
   const handlePracticeAnswer = async (correct: boolean) => {
-    if (!currentPracticeWord) {
+    if (!currentPracticeWord || isProcessing) {
       return;
     }
 
-    const performance = correct ? "perfect" : "forgot";
-    const response = await reviewWord(currentPracticeWord, performance);
-
-    if (response.success && response.nextStage) {
-      const nextMastery = stageToMasteryLevel(response.nextStage);
-      const xpAmount = response.xpEarned ?? currentStageInfo.xpBonus;
-      setEarnedXP(prev => prev + xpAmount);
-      setShowXPPopup(true);
-      setTimeout(() => setShowXPPopup(false), 1000);
-
-      await addXp(xpAmount);
-
-      setWords(prev =>
-        prev.map(w =>
-          w.id === currentPracticeWord.id
-            ? {
-                ...w,
-                stage: response.nextStage as GrowthStage,
-                mastery_level: nextMastery,
-                last_practiced: new Date().toISOString(),
-              }
-            : w
-        )
-      );
-    }
+    setIsProcessing(true);
     
-    setShowAnswer(false);
-    if (currentPracticeIndex < practiceWords.length - 1) {
-      setCurrentPracticeIndex(prev => prev + 1);
-    } else {
-      setPracticeMode(false);
-      setCurrentPracticeIndex(0);
-      setPracticeWords([]);
-      setPracticeIntro(null);
+    try {
+      const performance = correct ? "perfect" : "forgot";
+      const response = await reviewWord(currentPracticeWord, performance);
+  
+      if (response.success && response.nextStage) {
+        const nextMastery = stageToMasteryLevel(response.nextStage);
+        const xpAmount = response.xpEarned ?? currentStageInfo.xpBonus;
+        setEarnedXP(prev => prev + xpAmount);
+        setShowXPPopup(true);
+        setTimeout(() => setShowXPPopup(false), 1000);
+  
+        await addXp(xpAmount);
+  
+        setWords(prev =>
+          prev.map(w =>
+            w.id === currentPracticeWord.id
+              ? {
+                  ...w,
+                  stage: response.nextStage as GrowthStage,
+                  mastery_level: nextMastery,
+                  last_practiced: new Date().toISOString(),
+                }
+              : w
+          )
+        );
+      }
+      
+      setShowAnswer(false);
+      if (currentPracticeIndex < practiceWords.length - 1) {
+        setCurrentPracticeIndex(prev => prev + 1);
+      } else {
+        setPracticeMode(false);
+        setCurrentPracticeIndex(0);
+        setPracticeWords([]);
+        setPracticeIntro(null);
+      }
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -352,17 +369,31 @@ export default function Vocabulary() {
                     <div className="flex gap-3">
                       <button 
                         onClick={() => handlePracticeAnswer(false)}
-                        className="flex-1 py-4 bg-destructive/10 hover:bg-destructive/20 border-2 border-destructive/30 rounded-xl flex items-center justify-center gap-2 text-destructive transition-all hover:scale-[1.02]"
+                        disabled={isProcessing}
+                        className={cn(
+                          "flex-1 py-4 bg-destructive/10 hover:bg-destructive/20 border-2 border-destructive/30 rounded-xl flex items-center justify-center gap-2 text-destructive transition-all hover:scale-[1.02]",
+                          isProcessing && "opacity-50 cursor-not-allowed transform-none"
+                        )}
                       >
                         <X size={20} />
                         <span className="font-hand-secondary">Still learning</span>
                       </button>
                       <button 
                         onClick={() => handlePracticeAnswer(true)}
-                        className="flex-1 py-4 bg-success/10 hover:bg-success/20 border-2 border-success/30 rounded-xl flex items-center justify-center gap-2 text-success transition-all hover:scale-[1.02]"
+                        disabled={isProcessing}
+                        className={cn(
+                          "flex-1 py-4 bg-success/10 hover:bg-success/20 border-2 border-success/30 rounded-xl flex items-center justify-center gap-2 text-success transition-all hover:scale-[1.02]",
+                          isProcessing && "opacity-50 cursor-not-allowed transform-none"
+                        )}
                       >
-                        <Check size={20} />
-                        <span className="font-hand-secondary">Got it! 🌱</span>
+                        {isProcessing ? (
+                          <Sparkles size={20} className="animate-spin" />
+                        ) : (
+                          <Check size={20} />
+                        )}
+                        <span className="font-hand-secondary">
+                          {isProcessing ? "Growing..." : "Got it! 🌱"}
+                        </span>
                       </button>
                     </div>
                     
@@ -376,6 +407,45 @@ export default function Vocabulary() {
             </div>
           </div>
         )}
+
+        {/* ===== CATEGORY FILTER ===== */}
+        <section className="mb-6">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className={cn(
+                "px-4 py-2 rounded-full border-2 transition-all font-hand-secondary text-sm",
+                !selectedCategory 
+                  ? "bg-accent text-accent-foreground border-accent shadow-md" 
+                  : "bg-card border-border/30 hover:border-accent/50 hover:bg-accent/5"
+              )}
+            >
+              All Words ({words.length})
+            </button>
+            
+            {categories.map(cat => {
+              const catWords = words.filter(w => w.category === cat);
+              // Use a default emoji since we don't store emoji in DB yet, or check for common categories
+              const emoji = "📚"; 
+              
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={cn(
+                    "px-4 py-2 rounded-full border-2 transition-all font-hand-secondary text-sm flex items-center gap-2",
+                    selectedCategory === cat 
+                      ? "bg-accent text-accent-foreground border-accent shadow-md" 
+                      : "bg-card border-border/30 hover:border-accent/50 hover:bg-accent/5"
+                  )}
+                >
+                  <span className="text-lg">{emoji}</span>
+                  {cat} ({catWords.length})
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
         {/* ===== WORD CARDS GRID ===== */}
         <section className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

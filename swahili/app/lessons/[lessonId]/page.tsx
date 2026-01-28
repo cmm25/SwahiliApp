@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { getLessonById } from "@/lib/lesson-structure";
 import { useStreak } from "@/hooks/useStreak";
+import { useLessonProgress } from "@/hooks/useLessonProgress";
 
 type LessonMeta = {
   title: string;
@@ -123,7 +124,8 @@ export default function LessonDetailPage() {
   const params = useParams<{ lessonId: string }>();
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
-  const { addXp } = useStreak();
+  const { addXp, logActivity } = useStreak();
+  const { isLessonCompleted, getLessonProgress, markLessonComplete } = useLessonProgress();
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -314,7 +316,11 @@ export default function LessonDetailPage() {
     }
     if (!hasAwardedXp && lessonMeta?.xp) {
       setHasAwardedXp(true);
-      await addXp(lessonMeta.xp);
+      const alreadyCompleted = isLessonCompleted(lessonId);
+      const xpToAward = alreadyCompleted ? Math.round(lessonMeta.xp * 0.2) : lessonMeta.xp;
+      await markLessonComplete(lessonId, xpToAward);
+      await addXp(xpToAward, 'lesson_completion', { lessonId, title: lessonMeta.title });
+      await logActivity();
     }
     setShowCelebration(true);
   };

@@ -11,9 +11,11 @@ import Link from "next/link";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { lessonLevels } from "@/lib/lesson-structure";
 import { useStreak } from "@/hooks/useStreak";
+import { useLessonProgress } from "@/hooks/useLessonProgress";
 
 export default function Lessons() {
   const { xp, isLoading: xpLoading } = useStreak();
+  const { isLessonCompleted } = useLessonProgress();
 
   return (
     <ProtectedRoute>
@@ -58,6 +60,7 @@ export default function Lessons() {
               {level.units.map((unit, unitIndex) => {
                 const isUnitLocked = Boolean(unit.locked) || isLevelLocked;
                 const isCurrent = Boolean(unit.current) && !isUnitLocked;
+                const isCompleted = isLessonCompleted(unit.id);
                 return (
                 <Link 
                   key={unit.id} 
@@ -70,12 +73,12 @@ export default function Lessons() {
                     className={cn(
                       "relative overflow-hidden transition-all",
                       isUnitLocked && "opacity-40",
-                      unit.completed && !isUnitLocked && "border-success/30"
+                      isCompleted && !isUnitLocked && "border-success/30"
                     )}
                     style={{ animationDelay: `${(levelIndex * 4 + unitIndex) * 0.1}s` }}
                   >
                     {/* Completion badge */}
-                    {unit.completed && !isUnitLocked && (
+                    {isCompleted && !isUnitLocked && (
                       <div className="absolute top-3 right-3">
                         <div className="w-7 h-7 bg-success/20 border border-success/30 rounded-full flex items-center justify-center text-success">
                           <CheckCircle size={16} />
@@ -94,7 +97,7 @@ export default function Lessons() {
                       {/* Category Icon */}
                     <div className={cn(
                       "w-14 h-14 border border-border/30 rounded-sm flex items-center justify-center",
-                      unit.completed ? "bg-success/10" :
+                      isCompleted ? "bg-success/10" :
                       isCurrent ? "bg-accent/10" :
                       isUnitLocked ? "bg-muted/30" : "bg-secondary/30"
                     )}>

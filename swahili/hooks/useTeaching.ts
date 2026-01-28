@@ -11,6 +11,7 @@ import {
   VocabularyWord,
 } from '@/lib/agents/teaching-shared';
 import { useAuth } from './useAuth';
+import { useStreak } from './useStreak';
 
 interface TeachingApiRequest {
   action: 'introduce' | 'review' | 'practice' | 'get_due_words' | 'update_progress';
@@ -23,6 +24,7 @@ interface TeachingApiRequest {
 
 export function useTeaching() {
   const { user, session } = useAuth();
+  const { addXp, logActivity } = useStreak();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const sessionIdRef = useRef<string | null>(null);
@@ -272,6 +274,16 @@ export function useTeaching() {
               last_practiced: new Date().toISOString(),
               times_practiced: (word.times_practiced ?? 0) + 1,
             } as never, { onConflict: "user_id,word_id" }) as unknown as Promise<unknown>);
+
+          // Award XP and log activity
+          if (response.xpEarned && response.xpEarned > 0) {
+            await addXp(response.xpEarned, 'vocab_practice', { 
+              wordId: word.id, 
+              swahili: word.swahili,
+              stage: response.nextStage 
+            });
+            await logActivity();
+          }
         }
 
         return response;
@@ -287,16 +299,42 @@ export function useTeaching() {
     setError(null);
 
     try {
+      // 1. Fetch all words first
       const words = await fetchVocabulary();
+      
+      // 2. Filter due words locally (client-side) for speed
+      const dueWords = filterDueWords(words).slice(0, 5);
 
-      return callTeachingApi({
+      if (dueWords.length === 0) {
+        return {
+          success: true,
+          action: 'practice',
+          content: "🌳 Your garden is thriving! All your words are growing well. Come back later when they're ready for more practice.",
+          words: [],
+          xpEarned: 0,
+        };
+      }
+
+      // 3. Return immediately without LLM call for speed
+      // We use a static intro instead of waiting for AI generation
+      return {
+        success: true,
         action: 'practice',
-        words,
-      });
+        content: `Ready to water ${dueWords.length} plants? Let's help them grow!`,
+        words: dueWords,
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to start practice';
+      setError(message);
+      return {
+        success: false,
+        action: 'practice',
+        error: message
+      };
     } finally {
       setIsLoading(false);
     }
-  }, [callTeachingApi, fetchVocabulary]);
+  }, [fetchVocabulary, filterDueWords]);
 
   const getDueWords = useCallback(async (): Promise<VocabularyWord[]> => {
     const words = await fetchVocabulary();
