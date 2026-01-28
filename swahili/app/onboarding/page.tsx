@@ -10,6 +10,7 @@ import { AvatarStep } from "@/components/onboarding/AvatarStep";
 import { NameStep } from "@/components/onboarding/NameStep";
 import { CelebrationStep } from "@/components/onboarding/CelebrationStep";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { useProfile } from "@/hooks/useProfile";
 
 type OnboardingStep = "welcome" | "avatar" | "name" | "complete";
 
@@ -24,6 +25,7 @@ export default function Onboarding() {
 
   const router = useRouter();
   const { toast } = useToast();
+  const { updateProfile } = useProfile();
 
   const currentStepIndex = STEPS.indexOf(step);
 
@@ -46,6 +48,20 @@ export default function Onboarding() {
     }
 
     setIsLoading(true);
+    const { error } = await updateProfile({
+      display_name: displayName.trim(),
+      avatar: selectedAvatar,
+    });
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Profile update failed",
+        description: error.message || "Please try again.",
+      });
+      setIsLoading(false);
+      return;
+    }
+
     transitionTo("complete");
 
     setTimeout(() => {

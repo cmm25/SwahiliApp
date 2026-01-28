@@ -15,6 +15,7 @@ import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useStreak } from "@/hooks/useStreak";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { useProfile } from "@/hooks/useProfile";
 
 const allBadges: BadgeType[] = ["first_lesson", "streak_7", "streak_30", "words_100", "words_500", "conversation_10", "perfect_quiz", "daily_goal", "explorer", "champion"];
 const unlockedBadges: BadgeType[] = ["first_lesson", "streak_7", "words_100"];
@@ -22,10 +23,7 @@ const unlockedBadges: BadgeType[] = ["first_lesson", "streak_7", "words_100"];
 export default function Profile() {
   const { streak, xp } = useStreak();
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [profile, setProfile] = useState({
-    displayName: "Mwanafunzi",
-    avatar: "lion",
-  });
+  const { profile, updateProfile } = useProfile();
 
   const { user } = useAuth();
 
@@ -34,10 +32,11 @@ export default function Profile() {
   const currentLevelXP = xp % 500;
   const requiredLevelXP = 500;
 
+  const displayName = profile?.display_name || "Mwanafunzi";
+  const avatar = profile?.avatar || "lion";
+
   const handleSaveProfile = async (data: { displayName: string; avatar: string }) => {
-    // UI only - stores in local state
-    setProfile(data);
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await updateProfile({ display_name: data.displayName, avatar: data.avatar });
   };
 
   return (
@@ -61,10 +60,10 @@ export default function Profile() {
 
             {/* Avatar */}
             <div className="flex justify-center">
-              <ProfileAvatar avatarId={profile.avatar} size="xl" />
+              <ProfileAvatar avatarId={avatar} size="xl" />
             </div>
 
-            <h2 className="font-hand text-2xl mt-4">{profile.displayName}</h2>
+            <h2 className="font-hand text-2xl mt-4">{displayName}</h2>
             <p className="font-hand-secondary text-sm text-muted-foreground">
               {user?.email || "Joined January 2026"}
             </p>
@@ -119,7 +118,7 @@ export default function Profile() {
         <EditProfileDialog
           open={isEditOpen}
           onOpenChange={setIsEditOpen}
-          initialData={profile}
+          initialData={{ displayName, avatar }}
           onSave={handleSaveProfile}
         />
       </AppLayout>
