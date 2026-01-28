@@ -25,7 +25,8 @@ export interface ChatMessage {
 export async function chatWithRafiki(
     message: string,
     history: ChatMessage[] = [],
-    userId?: string
+    userId?: string,
+    sessionId?: string
 ) {
     // Construct the conversation history for the LLM
     // We keep the last 10 turns to maintain context without exceeding tokens
@@ -54,12 +55,14 @@ export async function chatWithRafiki(
         input: message,
         output: response,
         userId: userId,
+        sessionId,
         metadata: {
             historyLength: history.length,
             latencyMs: latency,
             topic: 'general',
             timestamp: new Date().toISOString()
-        }
+        },
+        tags: ['conversation']
     });
 
     console.log('🔍 Trace result:', traceResult);
@@ -85,6 +88,7 @@ export async function chatWithRafiki(
                         input: message,
                         output: response,
                         userId: userId,
+                        sessionId,
                         metadata: {
                             originalTraceId: opikTraceId,
                             evaluationScore: evaluation.score,
@@ -129,6 +133,7 @@ export async function chatWithRafikiEnhanced(
     message: string,
     history: ChatMessage[] = [],
     userId?: string,
+    sessionId?: string,
     options?: {
         skipEvaluation?: boolean;
         customMetadata?: Record<string, unknown>;
@@ -160,6 +165,7 @@ export async function chatWithRafikiEnhanced(
             input: message,
             output: response,
             userId: userId,
+            sessionId,
             metadata: {
                 historyLength: history.length,
                 latencyMs: latency,
@@ -167,7 +173,8 @@ export async function chatWithRafikiEnhanced(
                 timestamp: new Date().toISOString(),
                 version: '1.0',
                 ...options?.customMetadata
-            }
+            },
+            tags: ['conversation']
         });
 
         // 3. Async evaluation (if not skipped)
@@ -187,6 +194,7 @@ export async function chatWithRafikiEnhanced(
                                 input: message,
                                 output: response,
                                 userId: userId,
+                                sessionId,
                                 metadata: {
                                     originalTraceId: traceResult.opikTraceId,
                                     evaluationScore: evaluation.score

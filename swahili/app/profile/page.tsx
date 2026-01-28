@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { SketchCard } from "@/components/shared/SketchCard";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -9,12 +8,11 @@ import { LevelProgress } from "@/components/shared/LevelProgress";
 import { StreakBadge } from "@/components/shared/StreakBadge";
 import { XPBadge } from "@/components/shared/XPBadge";
 import { AchievementBadge, BadgeType } from "@/components/shared/AchievementBadge";
-import { LogOut, Edit2 } from "lucide-react";
+import { Edit2 } from "lucide-react";
 import { SketchButton } from "@/components/shared/SketchButton";
 import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { useStreak } from "@/hooks/useStreak";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
@@ -29,9 +27,7 @@ export default function Profile() {
     avatar: "lion",
   });
 
-  const { signOut, user } = useAuth();
-  const { toast } = useToast();
-  const router = useRouter();
+  const { user } = useAuth();
 
   // Calculate level from XP
   const level = Math.floor(xp / 500) + 1;

@@ -64,13 +64,15 @@ export async function teach(request: TeachingRequest): Promise<TeachingResponse>
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-    await logTrace({
-      userId: request.userId,
-      agentName: 'teaching',
+  await logTrace({
+    userId: request.userId,
+    agentName: 'teaching-agent',
       input: JSON.stringify(request),
       output: JSON.stringify({ error: errorMessage }),
+    sessionId: request.sessionId,
       latencyMs: Date.now() - startTime,
-      metadata: { action: request.action, error: true },
+    metadata: { action: request.action, error: true },
+    tags: ['teaching', 'error', request.action],
     });
 
     return {
@@ -121,11 +123,13 @@ Keep it concise but engaging. Use the garden metaphor - this is a new seed being
 
   await logTrace({
     userId: request.userId,
-    agentName: 'teaching',
+    agentName: 'teaching-agent',
     input: prompt,
     output: responseText,
+    sessionId: request.sessionId,
     latencyMs,
     metadata: { action: 'introduce', wordId: word.id },
+    tags: ['teaching', 'introduce'],
   });
 
   return {
@@ -188,9 +192,10 @@ Provide brief, encouraging feedback (2-3 sentences). ${
 
   await logTrace({
     userId: request.userId,
-    agentName: 'teaching',
+    agentName: 'teaching-agent',
     input: prompt,
     output: responseText,
+    sessionId: request.sessionId,
     latencyMs,
     metadata: {
       action: 'review',
@@ -198,6 +203,7 @@ Provide brief, encouraging feedback (2-3 sentences). ${
       performance,
       stageChange: stageChange ? `${word.stage} → ${nextStage}` : 'none',
     },
+    tags: ['teaching', 'review', performance],
   });
 
   return {
@@ -266,11 +272,13 @@ Don't include the actual practice questions - just the intro.`;
 
   await logTrace({
     userId: request.userId,
-    agentName: 'teaching',
+    agentName: 'teaching-agent',
     input: prompt,
     output: responseText,
+    sessionId: request.sessionId,
     latencyMs,
     metadata: { action: 'practice', wordCount: dueWords.length },
+    tags: ['teaching', 'practice'],
   });
 
   return {

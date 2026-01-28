@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
   calculateNextStage,
@@ -18,12 +18,29 @@ interface TeachingApiRequest {
   words?: VocabularyWord[];
   performance?: 'perfect' | 'good' | 'struggled' | 'forgot';
   context?: string;
+  sessionId?: string;
 }
 
 export function useTeaching() {
   const { user, session } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
+
+  if (sessionIdRef.current === null && typeof window !== 'undefined') {
+    const storageKey = 'rafiki_session_id';
+    const stored = localStorage.getItem(storageKey);
+    if (stored) {
+      sessionIdRef.current = stored;
+    } else {
+      const newId =
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      localStorage.setItem(storageKey, newId);
+      sessionIdRef.current = newId;
+    }
+  }
 
   const callTeachingApi = useCallback(
     async (payload: TeachingApiRequest): Promise<TeachingResponse> => {
@@ -31,13 +48,18 @@ export function useTeaching() {
         return { success: false, action: payload.action, error: 'Not authenticated' };
       }
 
+      const requestBody = {
+        ...payload,
+        sessionId: sessionIdRef.current ?? undefined,
+      };
+
       const response = await fetch('/api/agents/teaching', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {

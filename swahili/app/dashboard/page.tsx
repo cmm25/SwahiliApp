@@ -6,12 +6,9 @@ import {
   MessageCircle,
   Flower2,
   ChevronRight,
-  Sparkles,
-  Quote,
   Play,
   Volume2,
   Heart,
-  ArrowRight,
   Leaf,
   TreeDeciduous
 } from "lucide-react";
@@ -19,9 +16,10 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { SketchCard } from "@/components/shared/SketchCard";
 import { SketchButton } from "@/components/shared/SketchButton";
 import { LevelProgress } from "@/components/shared/LevelProgress";
-import { AchievementBadge, BadgeType } from "@/components/shared/AchievementBadge";
+import { BadgeType } from "@/components/shared/AchievementBadge";
 import { LionMascot, SketchFlame, SketchStar } from "@/components/shared/HandDrawnIcons";
 import { DoodleArrow, SquigglyUnderline, WobblyProgress, CornerSquiggle } from "@/components/shared/Doodle";
+import { DailyArticleFeature } from "@/components/article";
 import { useState, useEffect } from "react";
 import { useStreak } from "@/hooks/useStreak";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -323,7 +321,16 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Row 3: Word of Day + Wisdom */}
+          {/* Row 3: Makala ya Leo */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <h2 className="font-hand text-xl">📰 Makala ya Leo</h2>
+              <span className="font-hand-secondary text-xs text-muted-foreground">— Today&apos;s Article</span>
+            </div>
+            <DailyArticleFeature />
+          </div>
+
+          {/* Row 4: Word of Day + Wisdom */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Word of the Day */}
             <SketchCard className="bg-gradient-to-br from-warning/5 to-transparent border-warning/20" doodle>

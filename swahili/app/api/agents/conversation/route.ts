@@ -11,14 +11,14 @@ export async function POST(req: NextRequest) {
 
     try {
         // 2. Parse Body
-        const { message, history } = await req.json();
+        const { message, history, sessionId } = await req.json();
 
         if (!message) {
             return NextResponse.json({ error: 'Message is required' }, { status: 400 });
         }
 
         // 3. Run Agent
-        const reply = await chatWithRafiki(message, history || [], user.id);
+        const reply = await chatWithRafiki(message, history || [], user.id, sessionId);
 
         // 4. Response
         return NextResponse.json({
