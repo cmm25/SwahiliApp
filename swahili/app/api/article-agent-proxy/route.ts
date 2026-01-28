@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { logTrace } from "@/lib/opik";
 
 const FIRECRAWL_API_URL = "https://api.firecrawl.dev/v1/search";
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
@@ -114,9 +115,13 @@ async function searchArticles(query: string, apiKey: string): Promise<Article[]>
 }
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  let traceInput = "action: unknown";
+  let traceTopic = "";
   try {
     const body = await request.json();
     const { action } = body;
+    traceInput = `action: ${action || "unknown"}`;
 
     if (action !== "curate" && action !== "search") {
       return NextResponse.json(
@@ -137,9 +142,25 @@ export async function POST(request: NextRequest) {
     if (action === "curate") {
       const dayOfYear = getDayOfYear();
       const todaysTopic = TOPICS[dayOfYear % TOPICS.length];
+      traceTopic = todaysTopic;
 
       if (isCacheValid(dailyCache, dayOfYear)) {
         console.log("[article-agent] Cache hit for daily article");
+        void logTrace({
+          agentName: "article-agent",
+          input: `action: curate | topic: ${todaysTopic}`,
+          output: dailyCache!.data.title,
+          metadata: {
+            action: "curate",
+            topic: todaysTopic,
+            cached: true,
+            dayOfYear,
+          },
+          latencyMs: Date.now() - startTime,
+          tags: ["article-agent", "curate", "cache"],
+        }).catch((error) => {
+          console.warn("[article-agent] Trace logging failed:", error);
+        });
         return NextResponse.json({
           article: dailyCache!.data,
           topic: dailyCache!.topic,
@@ -154,6 +175,22 @@ export async function POST(request: NextRequest) {
       const articles = await searchArticles(todaysTopic, firecrawlApiKey);
 
       if (articles.length === 0) {
+        void logTrace({
+          agentName: "article-agent",
+          input: `action: curate | topic: ${todaysTopic}`,
+          output: "No daily article found",
+          metadata: {
+            action: "curate",
+            topic: todaysTopic,
+            cached: false,
+            dayOfYear,
+            success: false,
+          },
+          latencyMs: Date.now() - startTime,
+          tags: ["article-agent", "curate", "empty"],
+        }).catch((error) => {
+          console.warn("[article-agent] Trace logging failed:", error);
+        });
         return NextResponse.json({
           article: null,
           message: "No daily article found",
@@ -170,6 +207,24 @@ export async function POST(request: NextRequest) {
         topic: todaysTopic,
         dayOfYear,
       };
+
+      void logTrace({
+        agentName: "article-agent",
+        input: `action: curate | topic: ${todaysTopic}`,
+        output: article.title,
+        metadata: {
+          action: "curate",
+          topic: todaysTopic,
+          cached: false,
+          dayOfYear,
+          source: article.source,
+          url: article.url,
+        },
+        latencyMs: Date.now() - startTime,
+        tags: ["article-agent", "curate"],
+      }).catch((error) => {
+        console.warn("[article-agent] Trace logging failed:", error);
+      });
 
       return NextResponse.json({
         article,
@@ -189,7 +244,22 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      traceInput = `action: search | query: ${query}`;
       const articles = await searchArticles(query, firecrawlApiKey);
+      void logTrace({
+        agentName: "article-agent",
+        input: `action: search | query: ${query}`,
+        output: `results: ${articles.length}`,
+        metadata: {
+          action: "search",
+          query,
+          resultCount: articles.length,
+        },
+        latencyMs: Date.now() - startTime,
+        tags: ["article-agent", "search"],
+      }).catch((error) => {
+        console.warn("[article-agent] Trace logging failed:", error);
+      });
       return NextResponse.json({
         articles,
         query,
@@ -201,6 +271,18 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[article-agent] Error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
+    void logTrace({
+      agentName: "article-agent",
+      input: traceInput + (traceTopic ? ` | topic: ${traceTopic}` : ""),
+      output: `error: ${message}`,
+      metadata: {
+        error: message,
+      },
+      latencyMs: Date.now() - startTime,
+      tags: ["article-agent", "error"],
+    }).catch((traceError) => {
+      console.warn("[article-agent] Trace logging failed:", traceError);
+    });
     return NextResponse.json({ error: message, success: false }, { status: 500 });
   }
 }
