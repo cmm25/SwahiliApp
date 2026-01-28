@@ -47,18 +47,20 @@ const OPIK_CONFIG = {
 };
 
 // Function to create a fresh Opik client
-function createOpikClient() {
+export function createOpikClient() {
+    const authHeader = `Bearer ${OPIK_CONFIG.apiKey}`;
+    const headers = {
+        Authorization: authHeader,
+        'X-API-KEY': OPIK_CONFIG.apiKey,
+    };
     const config = {
         ...OPIK_CONFIG,
-        headers: {
-            Authorization: OPIK_CONFIG.apiKey,
-            'X-API-KEY': OPIK_CONFIG.apiKey,
-        },
+        headers,
         requestOptions: {
-            headers: {
-                Authorization: OPIK_CONFIG.apiKey,
-                'X-API-KEY': OPIK_CONFIG.apiKey,
-            },
+            headers,
+        },
+        fetchOptions: {
+            headers,
         },
     };
 

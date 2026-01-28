@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -16,6 +16,22 @@ export function useConversation() {
     ]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const sessionIdRef = useRef<string | null>(null);
+
+    if (sessionIdRef.current === null && typeof window !== 'undefined') {
+        const storageKey = 'rafiki_session_id';
+        const stored = localStorage.getItem(storageKey);
+        if (stored) {
+            sessionIdRef.current = stored;
+        } else {
+            const newId =
+                typeof crypto !== 'undefined' && 'randomUUID' in crypto
+                    ? crypto.randomUUID()
+                    : `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+            localStorage.setItem(storageKey, newId);
+            sessionIdRef.current = newId;
+        }
+    }
 
     const sendMessage = useCallback(async (content: string) => {
         if (!session?.access_token) {
@@ -40,7 +56,8 @@ export function useConversation() {
                 },
                 body: JSON.stringify({
                     message: content,
-                    history: messages // Send previous context
+                    history: messages, // Send previous context
+                    sessionId: sessionIdRef.current ?? undefined
                 })
             });
 

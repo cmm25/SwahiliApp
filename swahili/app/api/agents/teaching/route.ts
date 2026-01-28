@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
       words: body.words,
       performance: body.performance,
       context: body.context,
+      sessionId: body.sessionId,
     };
 
     const result = await teach(request);

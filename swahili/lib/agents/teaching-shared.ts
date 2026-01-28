@@ -18,6 +18,7 @@ export interface TeachingRequest {
   words?: VocabularyWord[];
   performance?: 'perfect' | 'good' | 'struggled' | 'forgot';
   context?: string;
+  sessionId?: string;
 }
 
 export interface TeachingResponse {
