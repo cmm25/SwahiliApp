@@ -8,7 +8,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   isLoading: boolean;
-  signUp: (email: string, password: string, displayName?: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, displayName?: string) => Promise<{ data: { user: User | null; session: Session | null } | null; error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -31,9 +31,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error("Error checking auth session:", error);
+        // If the refresh token is invalid (e.g. from localStorage/cookies), ensure we clear any stale state
+        // This prevents infinite loop or stuck states for the user
+        if (error.message.includes("Refresh Token Not Found") || error.message.includes("Invalid Refresh Token")) {
+          // Force sign out to clear invalid tokens
+          supabase.auth.signOut().catch(console.error);
+        }
+      }
       setSession(session);
       setUser(session?.user ?? null);
+      setIsLoading(false);
+    }).catch(err => {
+      console.error("Unexpected error getting session:", err);
       setIsLoading(false);
     });
 
@@ -41,9 +53,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string, displayName?: string) => {
-    const redirectUrl = `${window.location.origin}/`;
+    // For development, use window.location.origin which will be http://localhost:3000
+    const redirectUrl = typeof window !== 'undefined' ? window.location.origin : undefined;
     
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -54,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     });
     
-    return { error: error as Error | null };
+    return { data, error: error as Error | null };
   };
 
   const signIn = async (email: string, password: string) => {
