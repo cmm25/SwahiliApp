@@ -60,6 +60,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             message === "No active session" ||
             message === "Not authenticated" ||
             name === "AbortError" ||
+            message?.includes("AbortError") ||
             message?.includes("signal is aborted")
           ) {
             return;

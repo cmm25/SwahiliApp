@@ -1,11 +1,9 @@
 'use client';
 
 import { useState } from "react";
-import { AppLayout } from "@/components/layout/AppLayout";
 import { SketchButton } from "@/components/shared/SketchButton";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Send, Bot, User, Trash2 } from "lucide-react";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useConversation } from "@/hooks/useConversation";
 
 // Sketch border that stays within bounds
@@ -76,9 +74,8 @@ export default function Conversation() {
   };
 
   return (
-    <ProtectedRoute>
-      <AppLayout>
-        <PageHeader 
+    <>
+      <PageHeader 
           title="Sema na AI" 
           subtitle="Practice speaking with your AI partner"
           action={
@@ -94,7 +91,7 @@ export default function Conversation() {
         />
         
         {/* Sketch-style chat container */}
-        <div className="relative h-[60vh] sm:h-[65vh] bg-card/20 overflow-hidden rounded-lg">
+      <div className="relative h-[60vh] sm:h-[65vh] bg-card/20 overflow-hidden rounded-lg">
           {/* Sketch border - properly contained */}
           <SketchBorder />
           
@@ -162,8 +159,7 @@ export default function Conversation() {
               </div>
             </div>
           </div>
-        </div>
-      </AppLayout>
-    </ProtectedRoute>
+      </div>
+    </>
   );
 }

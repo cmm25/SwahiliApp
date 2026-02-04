@@ -1,6 +1,5 @@
 'use client';
 
-import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { WordCard } from "@/components/vocabulary/WordCard";
 import { GardenStats } from "@/components/vocabulary/GardenStats";
@@ -22,7 +21,6 @@ import { cn } from "@/lib/utils";
 import { SketchButton } from "@/components/shared/SketchButton";
 import { SketchCard } from "@/components/shared/SketchCard";
 import { useStreak } from "@/hooks/useStreak";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useTeaching } from "@/hooks/useTeaching";
 import { GrowthStage, UserWord } from "@/lib/agents/teaching-shared";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
@@ -217,9 +215,8 @@ export default function Vocabulary() {
   const baseCount = (showLearningOnly || showDueOnly) ? userWords.length : words.length;
 
   return (
-    <ProtectedRoute>
-      <AppLayout>
-        <PageHeader 
+    <>
+      <PageHeader 
           title="Bustani ya Maneno" 
           subtitle="Your Word Garden — Watch your vocabulary bloom! 🌻"
         />
@@ -570,7 +567,7 @@ export default function Vocabulary() {
         </section>
 
         {/* ===== WORD CARDS GRID ===== */}
-        <section className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <section className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredWords.map((word, index) => (
             <WordCard 
               key={word.id}
@@ -594,8 +591,7 @@ export default function Vocabulary() {
               <p className="font-hand-secondary text-sm text-muted-foreground">Complete lessons to grow your garden</p>
             </div>
           </div>
-        </section>
-      </AppLayout>
-    </ProtectedRoute>
+      </section>
+    </>
   );
 }

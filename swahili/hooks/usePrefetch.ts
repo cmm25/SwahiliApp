@@ -8,11 +8,11 @@ const routeComponents: Record<string, () => Promise<unknown>> = {
   "/": () => import("@/app/page"),
   "/auth": () => import("@/app/auth/page"),
   "/onboarding": () => import("@/app/onboarding/page"),
-  "/dashboard": () => import("@/app/dashboard/page"),
-  "/lessons": () => import("@/app/lessons/page"),
-  "/conversation": () => import("@/app/conversation/page"),
-  "/vocabulary": () => import("@/app/vocabulary/page"),
-  "/profile": () => import("@/app/profile/page"),
+  "/dashboard": () => import("@/app/(protected)/dashboard/page"),
+  "/lessons": () => import("@/app/(protected)/lessons/page"),
+  "/conversation": () => import("@/app/(protected)/conversation/page"),
+  "/vocabulary": () => import("@/app/(protected)/vocabulary/page"),
+  "/profile": () => import("@/app/(protected)/profile/page"),
 };
 
 // Cache to prevent duplicate prefetches

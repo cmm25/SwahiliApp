@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 
 interface StreakData {
   currentStreak: number;
@@ -16,12 +17,17 @@ interface UseStreakReturn {
   isLoading: boolean;
   error: Error | null;
   logActivity: (options?: { signal?: AbortSignal }) => Promise<{ error: Error | null }>;
-  addXp: (amount: number, source?: string, metadata?: Record<string, any>) => Promise<{ error: Error | null }>;
+  addXp: (amount: number, source?: string, metadata?: Json) => Promise<{ error: Error | null }>;
   refetch: () => Promise<void>;
 }
 
-// Helper to get untyped supabase client for tables not yet in generated types
-const getUntypedClient = () => supabase as any;
+const getUntypedClient = () => supabase;
+
+const withAbortSignal = <T>(query: T, signal?: AbortSignal): T => {
+  if (!signal) return query;
+  const abortable = query as unknown as { abortSignal?: (value: AbortSignal) => T };
+  return abortable.abortSignal ? abortable.abortSignal(signal) : query;
+};
 
 
 export function useStreak(): UseStreakReturn {
@@ -161,7 +167,7 @@ export function useStreak(): UseStreakReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, signOut]);
 
   useEffect(() => {
     fetchStreak();
@@ -200,12 +206,9 @@ export function useStreak(): UseStreakReturn {
       let progressQuery = getUntypedClient()
         .from("learning_progress")
         .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (signal) {
-        progressQuery = progressQuery.abortSignal(signal);
-      }
-      const { data: currentData } = await progressQuery;
+        .eq("user_id", user.id);
+      progressQuery = withAbortSignal(progressQuery, signal);
+      const { data: currentData } = await progressQuery.maybeSingle();
 
     const lastActivity = currentData?.last_activity_date ?? null;
     let newStreak = currentData?.streak_days || 0;
@@ -243,9 +246,7 @@ export function useStreak(): UseStreakReturn {
         },
         { onConflict: "user_id" }
       );
-    if (signal) {
-      updateQuery = updateQuery.abortSignal(signal);
-    }
+    updateQuery = withAbortSignal(updateQuery, signal);
     const { error: updateError } = await updateQuery;
 
     if (updateError) throw updateError;
@@ -254,34 +255,44 @@ export function useStreak(): UseStreakReturn {
       await fetchStreak();
 
       return { error: null };
-    } catch (err: any) {
+    } catch (err) {
+      const error = err as {
+        name?: string;
+        message?: string;
+        code?: string;
+        status?: number;
+      };
       // Ignore abort errors (component unmount or logout)
-      if (err?.name === "AbortError" || err?.message?.includes("signal is aborted")) {
+      if (
+        error?.name === "AbortError" ||
+        error?.message?.includes("AbortError") ||
+        error?.message?.includes("signal is aborted")
+      ) {
         return { error: null };
       }
 
       // Handle orphaned session or RLS violation without noisy logs during logout
       if (
-        err?.code === '23503' || // Foreign key violation (user not found)
-        err?.code === '42501' || // RLS violation (often due to auth mismatch)
-        err?.message?.includes('violates foreign key constraint')
+        error?.code === '23503' || // Foreign key violation (user not found)
+        error?.code === '42501' || // RLS violation (often due to auth mismatch)
+        error?.message?.includes('violates foreign key constraint')
       ) {
         await signOut();
         return { error: null };
       }
 
       // Ignore unauthorized errors caused by invalid sessions
-      if (err?.status === 401 || err?.message?.includes("Unauthorized")) {
+      if (error?.status === 401 || error?.message?.includes("Unauthorized")) {
         await signOut();
         return { error: null };
       }
 
-      console.error("Error logging activity:", err);
-      return { error: err as Error };
+      console.error("Error logging activity:", error);
+      return { error: error as Error };
     }
   };
 
-  const addXp = async (amount: number, source: string = 'unknown', metadata: Record<string, any> = {}) => {
+  const addXp = async (amount: number, source: string = 'unknown', metadata: Json = {}) => {
     if (!user) {
       return { error: new Error("Not authenticated") };
     }
