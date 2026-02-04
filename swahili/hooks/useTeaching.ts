@@ -25,6 +25,10 @@ interface TeachingApiRequest {
   sessionId?: string;
 }
 
+type UserVocabularyRow = Omit<UserVocabulary, 'growth_stage'> & {
+  growth_stage: string;
+};
+
 export function useTeaching() {
   const { user, session } = useAuth();
   const { addXp, logActivity } = useStreak();
@@ -130,20 +134,7 @@ export function useTeaching() {
       .from('user_vocabulary' as never)
       .select('id, user_id, word_id, growth_stage, ease_factor, interval_days, repetitions, next_review_at, last_reviewed_at, correct_count, incorrect_count, is_favorite')
       .eq('user_id', user.id) as unknown as Promise<{
-      data: Array<{
-        id: string;
-        user_id: string;
-        word_id: string;
-        growth_stage: string;
-        ease_factor: number;
-        interval_days: number;
-        repetitions: number;
-        next_review_at: string;
-        last_reviewed_at: string | null;
-        correct_count: number;
-        incorrect_count: number;
-        is_favorite: boolean | null;
-      }> | null;
+      data: UserVocabularyRow[] | null;
       error: Error | null;
     }>);
 
@@ -154,8 +145,13 @@ export function useTeaching() {
       }
     }
 
+    const normalizedProgress: UserVocabulary[] = (progress ?? []).map(item => ({
+      ...item,
+      growth_stage: normalizeGrowthStage(item.growth_stage),
+    }));
+
     const progressByWordId = new Map(
-      (progress ?? []).map(item => [item.word_id, item])
+      normalizedProgress.map(item => [item.word_id, item])
     );
 
     return (words ?? []).map(row => buildUserWord(row, progressByWordId.get(row.id) ?? null));
