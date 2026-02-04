@@ -66,3 +66,16 @@ export const HighlightMarker = ({
     </span>
   );
 };
+
+// Floating Shapes - soft decorative background elements
+export const FloatingShapes = ({ className = "" }: { className?: string }) => {
+  return (
+    <div className={`absolute inset-0 pointer-events-none ${className}`}>
+      <div className="absolute top-6 right-10 w-8 h-8 rounded-full border border-foreground/20 animate-float" />
+      <div className="absolute bottom-10 left-8 w-10 h-10 rotate-12 border border-foreground/15 animate-float [animation-delay:0.6s]" />
+      <div className="absolute top-1/2 right-16 w-3 h-3 rounded-full bg-foreground/10 animate-float [animation-delay:1.2s]" />
+      <div className="absolute bottom-8 right-10 w-5 h-5 border border-foreground/10 rotate-45 animate-float [animation-delay:1.8s]" />
+      <div className="absolute top-10 left-12 w-4 h-4 rounded-full bg-foreground/10 animate-float [animation-delay:0.9s]" />
+    </div>
+  );
+};
