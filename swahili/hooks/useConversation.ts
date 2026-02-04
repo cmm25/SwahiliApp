@@ -15,6 +15,8 @@ interface ConversationSession {
   context: Record<string, any>;
 }
 
+const getUntypedClient = () => supabase as any;
+
 export function useConversation() {
   const { user, session: authSession } = useAuth();
   const [session, setSession] = useState<ConversationSession | null>(null);
@@ -30,7 +32,7 @@ export function useConversation() {
 
     const loadSession = async () => {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await getUntypedClient()
           .from("conversation_sessions")
           .select("*")
           .eq("user_id", user.id)
@@ -94,7 +96,7 @@ export function useConversation() {
       let currentSessionId = session?.id;
 
       if (currentSessionId) {
-        await supabase
+        await getUntypedClient()
           .from("conversation_sessions")
           .update({
             messages: updatedMessages as any, // Supabase expects JSON
@@ -102,7 +104,7 @@ export function useConversation() {
           })
           .eq("id", currentSessionId);
       } else {
-        const { data, error } = await supabase
+        const { data, error } = await getUntypedClient()
           .from("conversation_sessions")
           .insert({
             user_id: user.id,
@@ -154,7 +156,7 @@ export function useConversation() {
       const finalMessages = [...updatedMessages, aiMessage];
       
       if (currentSessionId) {
-        await supabase
+        await getUntypedClient()
           .from("conversation_sessions")
           .update({
             messages: finalMessages as any,
