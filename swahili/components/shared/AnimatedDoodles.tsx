@@ -400,9 +400,9 @@ export const AnimatedStar = ({ className = "", delay = 0 }: { className?: string
   );
 };
 
-export const AnimatedSparkle = ({ className = "", delay = 0, size = 24 }: { className?: string, delay?: number, size?: number }) => {
+export const AnimatedSparkle = ({ className = "", delay = 0, size = 24, style }: { className?: string, delay?: number, size?: number, style?: React.CSSProperties }) => {
   return (
-    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <svg className={className} style={style} width={size} height={size} viewBox="0 0 24 24" fill="none">
       <AnimatedLine d="M12 2 L 14 10 L 22 12 L 14 14 L 12 22 L 10 14 L 2 12 L 10 10 Z" delay={delay} duration={1.0} />
     </svg>
   );
