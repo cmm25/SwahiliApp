@@ -14,12 +14,10 @@ import {
   LogOut 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SketchButton } from "@/components/shared/SketchButton";
 import { LionMascot, SketchFlame, SketchStar } from "@/components/shared/HandDrawnIcons";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useStreak } from "@/hooks/useStreak";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { PaperTexture, GridLines } from "@/components/shared/DecorativeElements";
 import { PrefetchLink } from "@/components/shared/PrefetchLink";
 import { useState } from "react";
@@ -36,59 +34,15 @@ const navItems = [
   { href: "/profile", label: "Wasifu", icon: User, english: "Profile", emoji: "👤" },
 ];
 
-export function AppLayout({ children }: AppLayoutProps) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const { signOut, user, isLoading } = useAuth();
-  const { toast } = useToast();
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const { streak, xp, logActivity } = useStreak();
+interface NavContentProps {
+  pathname: string;
+  streak: number;
+  xp: number;
+  onLogout: () => void;
+}
 
-  // Log activity when user visits the app
-  useEffect(() => {
-    if (!isLoading && user?.id) {
-      const controller = new AbortController();
-
-      logActivity({ signal: controller.signal }).then(({ error }) => {
-        if (error) {
-          const errorCode = (error as { code?: string; name?: string } | null)?.code;
-          const message = error.message;
-          const name = (error as { name?: string } | null)?.name;
-
-          // Ignore benign errors during logout/session transitions
-          if (
-            message === "No active session" ||
-            message === "Not authenticated" ||
-            name === "AbortError" ||
-            message?.includes("AbortError") ||
-            message?.includes("signal is aborted")
-          ) {
-            return;
-          }
-
-          // Skip logging empty errors
-          if (!message && !errorCode) {
-            return;
-          }
-
-          console.error("Activity log failed:", error);
-        }
-      });
-
-      return () => controller.abort();
-    }
-  }, [isLoading, logActivity, user?.id]);
-
-  const handleLogout = async () => {
-    await signOut();
-    toast({
-      title: "Kwaheri!",
-      description: "You have been logged out.",
-    });
-    router.replace("/");
-  };
-
-  const NavContent = () => (
+function NavContent({ pathname, streak, xp, onLogout }: NavContentProps) {
+  return (
     <>
       {/* Header */}
       <div className="flex items-center gap-3 p-6 border-b border-border/20">
@@ -156,7 +110,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Sign Out - always visible at bottom */}
       <div className="p-4 border-t border-border/30 flex-shrink-0">
         <button 
-          onClick={handleLogout}
+          onClick={onLogout}
           className="flex items-center gap-3 px-4 py-2 text-muted-foreground hover:text-foreground transition-colors w-full"
         >
           <LogOut size={18} />
@@ -165,6 +119,61 @@ export function AppLayout({ children }: AppLayoutProps) {
       </div>
     </>
   );
+}
+
+export function AppLayout({ children }: AppLayoutProps) {
+  const pathname = usePathname();
+  const currentPath = pathname ?? "";
+  const router = useRouter();
+  const { signOut, user, isLoading } = useAuth();
+  const { toast } = useToast();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const { streak, xp, logActivity } = useStreak();
+
+  // Log activity when user visits the app
+  useEffect(() => {
+    if (!isLoading && user?.id) {
+      const controller = new AbortController();
+
+      logActivity({ signal: controller.signal }).then(({ error }) => {
+        if (error) {
+          const errorCode = (error as { code?: string; name?: string } | null)?.code;
+          const message = error.message;
+          const name = (error as { name?: string } | null)?.name;
+
+          // Ignore benign errors during logout/session transitions
+          if (
+            message === "No active session" ||
+            message === "Not authenticated" ||
+            name === "AbortError" ||
+            message?.includes("AbortError") ||
+            message?.includes("signal is aborted")
+          ) {
+            return;
+          }
+
+          // Skip logging empty errors
+          if (!message && !errorCode) {
+            return;
+          }
+
+          console.error("Activity log failed:", error);
+        }
+      });
+
+      return () => controller.abort();
+    }
+  }, [isLoading, logActivity, user?.id]);
+
+  const handleLogout = async () => {
+    await signOut();
+    toast({
+      title: "Kwaheri!",
+      description: "You have been logged out.",
+    });
+    router.replace("/");
+  };
+
 
   return (
     <div className="min-h-screen bg-background flex w-full relative">
@@ -314,7 +323,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-64 h-screen bg-card border-r border-border/30 fixed top-0 left-0 overflow-hidden z-30">
-        <NavContent />
+        <NavContent pathname={currentPath} streak={streak} xp={xp} onLogout={handleLogout} />
       </aside>
 
       {/* Main Content - Offset for fixed sidebar, with mobile header padding */}

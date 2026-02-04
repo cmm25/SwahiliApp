@@ -124,7 +124,7 @@ export default function LessonDetailPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const { addXp, logActivity } = useStreak();
-  const { isLessonCompleted, getLessonProgress, markLessonComplete } = useLessonProgress();
+  const { isLessonCompleted, markLessonComplete } = useLessonProgress();
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -659,19 +659,5 @@ export default function LessonDetailPage() {
           </div>
         )}
       </div>
-
-      <style>{`
-        @keyframes fall {
-          0% {
-            transform: translateY(0) rotate(0deg);
-            opacity: 1;
-          }
-          100% {
-            transform: translateY(100vh) rotate(720deg);
-            opacity: 0;
-          }
-        }
-      `}</style>
-    </div>
   );
 }
