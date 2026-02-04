@@ -20,17 +20,19 @@ export default function Auth() {
     password: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const { signIn, signUp, user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
-  // Redirect if already logged in
+  // Redirect if already logged in, but ONLY if not currently processing a form submission
+  // This prevents race conditions where the auth state updates before the signup redirect occurs
   useEffect(() => {
-    if (user) {
+    if (user && !isLoading && !isRedirecting) {
       router.push("/dashboard");
     }
-  }, [user, router]);
+  }, [user, router, isLoading, isRedirecting]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,15 +49,18 @@ export default function Auth() {
               ? "Invalid email or password. Please try again."
               : error.message,
           });
+          setIsLoading(false);
         } else {
           toast({
             title: "Karibu! (Welcome!)",
             description: "You have successfully logged in.",
           });
+          setIsRedirecting(true);
           router.push("/dashboard");
         }
       } else {
-        const { error } = await signUp(formData.email, formData.password, formData.name);
+        const { data, error } = await signUp(formData.email, formData.password, formData.name);
+        
         if (error) {
           if (error.message.includes("already registered")) {
             toast({
@@ -71,12 +76,23 @@ export default function Auth() {
               description: error.message,
             });
           }
+          setIsLoading(false);
+        } else if (data?.user && !data.session) {
+          // User created but session is null -> Email confirmation required
+          toast({
+            title: "Check your email",
+            description: "Please check your email to confirm your account before logging in.",
+          });
+          setIsLogin(true);
+          setIsLoading(false);
         } else {
+          // Success with session -> Proceed to onboarding
           toast({
             title: "Account Created!",
             description: "Welcome to Jifunze! Let's set up your profile.",
           });
           // Redirect new users to onboarding
+          setIsRedirecting(true);
           router.push("/onboarding");
         }
       }
@@ -86,7 +102,6 @@ export default function Auth() {
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
       });
-    } finally {
       setIsLoading(false);
     }
   };

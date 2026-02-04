@@ -75,10 +75,14 @@ export function useProfile(): UseProfileReturn {
     }
 
     try {
+      // Use upsert to handle cases where profile might not exist (e.g. trigger failed)
       const { error: updateError } = await getUntypedClient()
         .from("profiles")
-        .update(data)
-        .eq("user_id", user.id);
+        .upsert({
+          user_id: user.id,
+          ...data,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
 
       if (updateError) throw updateError;
 

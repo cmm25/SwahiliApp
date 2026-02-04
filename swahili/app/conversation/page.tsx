@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { SketchButton } from "@/components/shared/SketchButton";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { Send, Bot, User } from "lucide-react";
+import { Send, Bot, User, Trash2 } from "lucide-react";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useConversation } from "@/hooks/useConversation";
 
@@ -28,7 +28,7 @@ function SketchBorder({ className }: { className?: string }) {
            S 97,97 98,98
            C 94,99 84,97 74,99 
            S 54,97 44,99 
-           S 24,97 14,99 
+           S 34,97 14,99 
            S 3,97 2,98
            C 1,94 3,84 1,74 
            S 3,54 1,44 
@@ -63,7 +63,7 @@ function CheckeredBackground({ className }: { className?: string }) {
 }
 
 export default function Conversation() {
-  const { messages, sendMessage, isLoading, error } = useConversation();
+  const { messages, sendMessage, isLoading, error, clearHistory } = useConversation();
   const [input, setInput] = useState("");
 
   const handleSend = async () => {
@@ -78,10 +78,23 @@ export default function Conversation() {
   return (
     <ProtectedRoute>
       <AppLayout>
-        <PageHeader title="Sema na AI" subtitle="Practice speaking with your AI partner" />
+        <PageHeader 
+          title="Sema na AI" 
+          subtitle="Practice speaking with your AI partner"
+          action={
+            <SketchButton 
+              variant="outline" 
+              size="sm" 
+              onClick={clearHistory}
+              title="Start New Chat"
+            >
+              <Trash2 size={16} />
+            </SketchButton>
+          }
+        />
         
         {/* Sketch-style chat container */}
-        <div className="relative h-[60vh] sm:h-[65vh] bg-card/20 overflow-hidden">
+        <div className="relative h-[60vh] sm:h-[65vh] bg-card/20 overflow-hidden rounded-lg">
           {/* Sketch border - properly contained */}
           <SketchBorder />
           
