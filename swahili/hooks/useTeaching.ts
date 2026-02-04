@@ -128,10 +128,11 @@ export function useTeaching() {
 
     const { data: progress, error: progressError } = await (supabase
       .from('user_vocabulary' as never)
-      .select('id, word_id, growth_stage, ease_factor, interval_days, repetitions, next_review_at, last_reviewed_at, correct_count, incorrect_count, is_favorite')
+      .select('id, user_id, word_id, growth_stage, ease_factor, interval_days, repetitions, next_review_at, last_reviewed_at, correct_count, incorrect_count, is_favorite')
       .eq('user_id', user.id) as unknown as Promise<{
       data: Array<{
         id: string;
+        user_id: string;
         word_id: string;
         growth_stage: string;
         ease_factor: number;
@@ -207,7 +208,7 @@ export function useTeaching() {
 
         const { data: existing } = await (supabase
           .from('user_vocabulary' as never)
-          .select('id, word_id, growth_stage, ease_factor, interval_days, repetitions, next_review_at, last_reviewed_at, correct_count, incorrect_count, is_favorite')
+          .select('id, user_id, word_id, growth_stage, ease_factor, interval_days, repetitions, next_review_at, last_reviewed_at, correct_count, incorrect_count, is_favorite')
           .eq('user_id', user.id)
           .eq('word_id', wordId)
           .maybeSingle() as unknown as Promise<{ data: UserVocabulary | null }>);
@@ -423,7 +424,7 @@ export function useTeaching() {
 
       const { data: existing, error: existingError } = await (supabase
         .from('user_vocabulary' as never)
-        .select('id, word_id, growth_stage, ease_factor, interval_days, repetitions, next_review_at, last_reviewed_at, correct_count, incorrect_count, is_favorite')
+        .select('id, user_id, word_id, growth_stage, ease_factor, interval_days, repetitions, next_review_at, last_reviewed_at, correct_count, incorrect_count, is_favorite')
         .eq('user_id', user.id)
         .eq('word_id', word.id)
         .maybeSingle() as unknown as Promise<{ data: UserVocabulary | null; error: Error | null }>);
