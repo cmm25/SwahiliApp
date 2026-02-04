@@ -12,7 +12,6 @@ import {
   Leaf,
   TreeDeciduous
 } from "lucide-react";
-import { AppLayout } from "@/components/layout/AppLayout";
 import { SketchCard } from "@/components/shared/SketchCard";
 import { SketchButton } from "@/components/shared/SketchButton";
 import { LevelProgress } from "@/components/shared/LevelProgress";
@@ -22,7 +21,6 @@ import { DoodleArrow, SquigglyUnderline, WobblyProgress, CornerSquiggle } from "
 import { DailyArticleFeature } from "@/components/article";
 import { useState, useEffect } from "react";
 import { useStreak } from "@/hooks/useStreak";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 export default function Dashboard() {
   const { streak, xp } = useStreak();
@@ -105,9 +103,8 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <ProtectedRoute>
-      <AppLayout>
-        {/* ===== HERO SECTION ===== */}
+    <>
+      {/* ===== HERO SECTION ===== */}
         <section className="relative mb-8">
           {/* Greeting Card with Mascot */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-accent/5 via-warning/5 to-success/5 border border-border/20 p-8">
@@ -437,7 +434,7 @@ export default function Dashboard() {
 
 
         {/* Mobile CTA */}
-        <div className="lg:hidden fixed bottom-6 left-6 right-6 z-40">
+      <div className="lg:hidden fixed bottom-6 left-6 right-6 z-40">
           <Link href="/lessons" className="block">
             <SketchButton variant="accent" size="lg" className="w-full shadow-lg">
               <Play size={18} />
@@ -445,7 +442,6 @@ export default function Dashboard() {
             </SketchButton>
           </Link>
         </div>
-      </AppLayout>
-    </ProtectedRoute>
+    </>
   );
 }

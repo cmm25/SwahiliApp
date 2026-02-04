@@ -1,6 +1,5 @@
 'use client';
 
-import { AppLayout } from "@/components/layout/AppLayout";
 import { SketchCard } from "@/components/shared/SketchCard";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { JourneyPath } from "@/components/shared/HandDrawnIcons";
@@ -8,7 +7,6 @@ import { HighlightMarker } from "@/components/shared/DecorativeElements";
 import { Lock, CheckCircle, Star, ChevronRight, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { lessonLevels } from "@/lib/lesson-structure";
 import { useStreak } from "@/hooks/useStreak";
 import { useLessonProgress } from "@/hooks/useLessonProgress";
@@ -18,8 +16,7 @@ export default function Lessons() {
   const { isLessonCompleted } = useLessonProgress();
 
   return (
-    <ProtectedRoute>
-    <AppLayout>
+    <>
       <PageHeader 
         title="Jifunze" 
         subtitle="Learn Swahili step by step"
@@ -155,7 +152,6 @@ export default function Lessons() {
           );
         })}
       </div>
-    </AppLayout>
-    </ProtectedRoute>
+    </>
   );
 }

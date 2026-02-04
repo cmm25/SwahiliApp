@@ -1,17 +1,17 @@
 import { cn } from "@/lib/utils";
 import { Heart, Check, Sparkles, Star, Volume2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { VocabularyWord } from "@/lib/agents/teaching-shared";
+import { UserWord } from "@/lib/agents/teaching-shared";
 
 interface WordCardProps {
-  word: VocabularyWord;
+  word: UserWord;
   stageInfo: {
     icon: React.ReactNode;
     label: string;
     color: string;
     bgColor: string;
   };
-  onToggleFavorite: (id: string) => void;
+  onToggleFavorite: (word: UserWord) => void;
   onPlayAudio?: (text: string) => void;
   index: number;
 }
@@ -20,7 +20,7 @@ export function WordCard({ word, stageInfo, onToggleFavorite, onPlayAudio, index
   const [isFlipped, setIsFlipped] = useState(false);
   const [showSparkle, setShowSparkle] = useState(false);
   const lastReviewedLabel = useMemo(() => {
-    const source = word.last_practiced ?? word.created_at;
+    const source = word.last_reviewed_at ?? word.created_at;
     if (!source) {
       return "Not reviewed";
     }
@@ -29,7 +29,7 @@ export function WordCard({ word, stageInfo, onToggleFavorite, onPlayAudio, index
       return "Not reviewed";
     }
     return date.toLocaleDateString();
-  }, [word.last_practiced, word.created_at]);
+  }, [word.last_reviewed_at, word.created_at]);
 
   const handleFlip = () => {
     setIsFlipped(!isFlipped);
@@ -39,8 +39,8 @@ export function WordCard({ word, stageInfo, onToggleFavorite, onPlayAudio, index
     }
   };
 
-  const isMastered = word.stage === "tree";
-  const isFlowering = word.stage === "flower";
+  const isMastered = word.growth_stage === "tree";
+  const isFlowering = word.growth_stage === "flower";
 
   return (
     <div 
@@ -87,7 +87,7 @@ export function WordCard({ word, stageInfo, onToggleFavorite, onPlayAudio, index
 
           {/* Favorite heart */}
           <button 
-            onClick={(e) => { e.stopPropagation(); onToggleFavorite(word.id); }}
+            onClick={(e) => { e.stopPropagation(); onToggleFavorite(word); }}
             className={cn(
               "absolute top-3 left-3 z-10 transition-all duration-300",
               word.is_favorite ? "scale-100" : "scale-0 group-hover:scale-100"

@@ -355,6 +355,7 @@ export type Database = {
       }
       user_vocabulary: {
         Row: {
+          is_favorite: boolean | null
           correct_count: number
           created_at: string
           ease_factor: number
@@ -370,6 +371,7 @@ export type Database = {
           word_id: string
         }
         Insert: {
+          is_favorite?: boolean | null
           correct_count?: number
           created_at?: string
           ease_factor?: number
@@ -385,6 +387,7 @@ export type Database = {
           word_id: string
         }
         Update: {
+          is_favorite?: boolean | null
           correct_count?: number
           created_at?: string
           ease_factor?: number

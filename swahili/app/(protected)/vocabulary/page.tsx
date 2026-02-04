@@ -1,6 +1,5 @@
 'use client';
 
-import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { WordCard } from "@/components/vocabulary/WordCard";
 import { GardenStats } from "@/components/vocabulary/GardenStats";
@@ -22,12 +21,9 @@ import { cn } from "@/lib/utils";
 import { SketchButton } from "@/components/shared/SketchButton";
 import { SketchCard } from "@/components/shared/SketchCard";
 import { useStreak } from "@/hooks/useStreak";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useTeaching } from "@/hooks/useTeaching";
-import { stageToMasteryLevel, VocabularyWord } from "@/lib/agents/teaching-shared";
+import { GrowthStage, UserWord } from "@/lib/agents/teaching-shared";
 import { useTextToSpeech } from "@/hooks/useTextToSpeech";
-
-type GrowthStage = "seed" | "sprout" | "sapling" | "flower" | "tree";
 
 const growthStages: Record<GrowthStage, { icon: React.ReactNode; label: string; color: string; bgColor: string; xpBonus: number }> = {
   seed: { icon: <Droplets size={14} />, label: "Seed", color: "text-muted-foreground", bgColor: "bg-muted/30 border-muted/50", xpBonus: 5 },
@@ -37,30 +33,44 @@ const growthStages: Record<GrowthStage, { icon: React.ReactNode; label: string; 
   tree: { icon: <TreeDeciduous size={14} />, label: "Mastered", color: "text-warning", bgColor: "bg-warning/20 border-warning/40", xpBonus: 25 },
 };
 
+const stageOptions: Array<{ value: GrowthStage; label: string }> = [
+  { value: "seed", label: "Seed" },
+  { value: "sprout", label: "Sprout" },
+  { value: "sapling", label: "Sapling" },
+  { value: "flower", label: "Blooming" },
+  { value: "tree", label: "Mastered" },
+];
+
 
 export default function Vocabulary() {
-  const { streak, xp, addXp } = useStreak();
+  const { streak, xp } = useStreak();
   const { fetchVocabulary, fetchVocabularyCount, toggleFavorite, startPractice, reviewWord, filterDueWords } = useTeaching();
   const { speak: playPronunciation } = useTextToSpeech();
-  const [words, setWords] = useState<VocabularyWord[]>([]);
+  const [words, setWords] = useState<UserWord[]>([]);
+  const [userWords, setUserWords] = useState<UserWord[]>([]);
   const [practiceMode, setPracticeMode] = useState(false);
   const [currentPracticeIndex, setCurrentPracticeIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [earnedXP, setEarnedXP] = useState(0);
   const [showXPPopup, setShowXPPopup] = useState(false);
-  const [practiceWords, setPracticeWords] = useState<VocabularyWord[]>([]);
+  const [practiceWords, setPracticeWords] = useState<UserWord[]>([]);
   const [practiceIntro, setPracticeIntro] = useState<string | null>(null);
   const [practiceNotice, setPracticeNotice] = useState<string | null>(null);
   const [totalVocabulary, setTotalVocabulary] = useState(0);
 
   const [isProcessing, setIsProcessing] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedStage, setSelectedStage] = useState<GrowthStage | "all">("all");
+  const [showFavorites, setShowFavorites] = useState(false);
+  const [showLearningOnly, setShowLearningOnly] = useState(false);
+  const [showDueOnly, setShowDueOnly] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
     fetchVocabulary().then(data => {
       if (isMounted) {
         setWords(data);
+        setUserWords(data.filter(word => Boolean(word.userVocabId)));
       }
     });
     fetchVocabularyCount().then(count => {
@@ -73,23 +83,52 @@ export default function Vocabulary() {
     };
   }, [fetchVocabulary, fetchVocabularyCount]);
 
-  const filteredWords = useMemo(() => 
-    selectedCategory ? words.filter(w => w.category === selectedCategory) : words,
-    [words, selectedCategory]
-  );
-  
-  const categories = useMemo(() => 
-    [...new Set(words.map(w => w.category).filter((c): c is string => Boolean(c)))].sort(), 
+  const categories = useMemo(
+    () => [...new Set(words.map(w => w.category).filter((c): c is string => Boolean(c)))].sort(),
     [words]
   );
 
+  const wordsNeedingWater = useMemo(() => filterDueWords(userWords), [filterDueWords, userWords]);
+  const dueWordIds = useMemo(
+    () => new Set(wordsNeedingWater.map(word => word.id)),
+    [wordsNeedingWater]
+  );
+
+  const filteredWords = useMemo(() => {
+    const baseWords = showDueOnly ? userWords : (showLearningOnly ? userWords : words);
+
+    return baseWords.filter(word => {
+      if (selectedCategory !== "all" && word.category !== selectedCategory) {
+        return false;
+      }
+      if (selectedStage !== "all" && word.growth_stage !== selectedStage) {
+        return false;
+      }
+      if (showFavorites && !word.is_favorite) {
+        return false;
+      }
+      if (showDueOnly && !dueWordIds.has(word.id)) {
+        return false;
+      }
+      return true;
+    });
+  }, [
+    selectedCategory,
+    selectedStage,
+    showFavorites,
+    showLearningOnly,
+    showDueOnly,
+    words,
+    userWords,
+    dueWordIds,
+  ]);
+
   // Practice mode handlers
-  const wordsNeedingWater = useMemo(() => filterDueWords(words), [filterDueWords, words]);
   const currentPracticeWord = practiceWords[currentPracticeIndex];
   const currentStageInfo = useMemo(
     () =>
       currentPracticeWord
-        ? growthStages[currentPracticeWord.stage as GrowthStage] ?? growthStages.seed
+        ? growthStages[currentPracticeWord.growth_stage as GrowthStage] ?? growthStages.seed
         : growthStages.seed,
     [currentPracticeWord]
   );
@@ -106,27 +145,31 @@ export default function Vocabulary() {
       const performance = correct ? "perfect" : "forgot";
       const response = await reviewWord(currentPracticeWord, performance);
   
-      if (response.success && response.nextStage) {
-        const nextMastery = stageToMasteryLevel(response.nextStage);
+      if (response.success) {
         const xpAmount = response.xpEarned ?? currentStageInfo.xpBonus;
         setEarnedXP(prev => prev + xpAmount);
         setShowXPPopup(true);
         setTimeout(() => setShowXPPopup(false), 1000);
-  
-        await addXp(xpAmount);
-  
-        setWords(prev =>
-          prev.map(w =>
-            w.id === currentPracticeWord.id
-              ? {
-                  ...w,
-                  stage: response.nextStage as GrowthStage,
-                  mastery_level: nextMastery,
-                  last_practiced: new Date().toISOString(),
-                }
-              : w
-          )
-        );
+
+        const fallbackWord = response.nextStage
+          ? { ...currentPracticeWord, growth_stage: response.nextStage as GrowthStage, last_reviewed_at: new Date().toISOString() }
+          : null;
+        const updatedWord = response.words?.[0] ?? fallbackWord;
+
+        if (updatedWord) {
+          setWords(prev =>
+            prev.map(w => (w.id === updatedWord.id ? updatedWord : w))
+          );
+          setUserWords(prev => {
+            const exists = prev.some(w => w.id === updatedWord.id);
+            return exists
+              ? prev.map(w => (w.id === updatedWord.id ? updatedWord : w))
+              : [...prev, updatedWord];
+          });
+          setPracticeWords(prev =>
+            prev.map(w => (w.id === updatedWord.id ? updatedWord : w))
+          );
+        }
       }
       
       setShowAnswer(false);
@@ -143,30 +186,37 @@ export default function Vocabulary() {
     }
   };
 
-  const handleToggleFavorite = async (id: string) => {
-    const success = await toggleFavorite(id);
-    if (success) {
-      setWords(prev => prev.map(w => w.id === id ? { ...w, is_favorite: !w.is_favorite } : w));
-    }
+  const handleToggleFavorite = async (word: UserWord) => {
+    const updated = await toggleFavorite(word);
+    if (!updated) return;
+
+    setWords(prev => prev.map(w => (w.id === updated.id ? updated : w)));
+    setUserWords(prev => {
+      const exists = prev.some(w => w.id === updated.id);
+      return exists
+        ? prev.map(w => (w.id === updated.id ? updated : w))
+        : [...prev, updated];
+    });
   };
 
   // Growth stage distribution for visual garden
   const stageDistribution = {
-    seed: words.filter(w => w.stage === "seed").length,
-    sprout: words.filter(w => w.stage === "sprout").length,
-    sapling: words.filter(w => w.stage === "sapling").length,
-    flower: words.filter(w => w.stage === "flower").length,
-    tree: words.filter(w => w.stage === "tree").length,
+    seed: userWords.filter(w => w.growth_stage === "seed").length,
+    sprout: userWords.filter(w => w.growth_stage === "sprout").length,
+    sapling: userWords.filter(w => w.growth_stage === "sapling").length,
+    flower: userWords.filter(w => w.growth_stage === "flower").length,
+    tree: userWords.filter(w => w.growth_stage === "tree").length,
   };
 
-  const waterProgress = words.length === 0
+  const waterProgress = userWords.length === 0
     ? 0
-    : Math.round(((words.length - wordsNeedingWater.length) / words.length) * 100);
+    : Math.round(((userWords.length - wordsNeedingWater.length) / userWords.length) * 100);
+
+  const baseCount = (showLearningOnly || showDueOnly) ? userWords.length : words.length;
 
   return (
-    <ProtectedRoute>
-      <AppLayout>
-        <PageHeader 
+    <>
+      <PageHeader 
           title="Bustani ya Maneno" 
           subtitle="Your Word Garden — Watch your vocabulary bloom! 🌻"
         />
@@ -196,7 +246,7 @@ export default function Vocabulary() {
         {/* ===== GARDEN STATS ===== */}
         <section className="mb-6">
           <GardenStats 
-            totalWords={words.length}
+            totalWords={userWords.length}
             totalVocabulary={totalVocabulary}
             masteredWords={stageDistribution.tree}
             streakDays={streak}
@@ -214,7 +264,7 @@ export default function Vocabulary() {
                   🌱 Your Garden is Thriving!
                 </h2>
                 <p className="font-hand-secondary text-muted-foreground">
-                  <span className="text-accent font-medium">{words.length} learned</span> •
+                  <span className="text-accent font-medium">{userWords.length} learned</span> •
                   <span className="text-warning font-medium"> {stageDistribution.tree} mastered</span> •
                   <span className="text-muted-foreground"> {totalVocabulary} total words</span>
                 </p>
@@ -252,7 +302,7 @@ export default function Vocabulary() {
 
             <GrowthVisualization 
               distribution={stageDistribution}
-              totalWords={words.length}
+              totalWords={userWords.length}
             />
           </SketchCard>
         </section>
@@ -408,52 +458,121 @@ export default function Vocabulary() {
           </div>
         )}
 
-        {/* ===== CATEGORY FILTER ===== */}
+        {/* ===== FILTERS ===== */}
         <section className="mb-6">
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setSelectedCategory(null)}
-              className={cn(
-                "px-4 py-2 rounded-full border-2 transition-all font-hand-secondary text-sm",
-                !selectedCategory 
-                  ? "bg-accent text-accent-foreground border-accent shadow-md" 
-                  : "bg-card border-border/30 hover:border-accent/50 hover:bg-accent/5"
-              )}
-            >
-              All Words ({words.length})
-            </button>
-            
-            {categories.map(cat => {
-              const catWords = words.filter(w => w.category === cat);
-              // Use a default emoji since we don't store emoji in DB yet, or check for common categories
-              const emoji = "📚"; 
-              
-              return (
+          <SketchCard className="border-border/40">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col lg:flex-row gap-3">
+                <div className="min-w-[200px]">
+                  <label className="font-hand-secondary text-xs text-muted-foreground">Category</label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-border/40 bg-card px-3 py-2 font-hand-secondary text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                  >
+                    <option value="all">All categories ({words.length})</option>
+                    {categories.map((category) => {
+                      const count = words.filter(word => word.category === category).length;
+                      return (
+                        <option key={category} value={category}>
+                          {category} ({count})
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                <div className="min-w-[180px]">
+                  <label className="font-hand-secondary text-xs text-muted-foreground">Stage</label>
+                  <select
+                    value={selectedStage}
+                    onChange={(e) => setSelectedStage(e.target.value as GrowthStage | "all")}
+                    className="mt-1 w-full rounded-xl border border-border/40 bg-card px-3 py-2 font-hand-secondary text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                  >
+                    <option value="all">All stages</option>
+                    {stageOptions.map((stage) => (
+                      <option key={stage.value} value={stage.value}>
+                        {stage.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
                 <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
+                  onClick={() => setShowLearningOnly(false)}
                   className={cn(
-                    "px-4 py-2 rounded-full border-2 transition-all font-hand-secondary text-sm flex items-center gap-2",
-                    selectedCategory === cat 
-                      ? "bg-accent text-accent-foreground border-accent shadow-md" 
-                      : "bg-card border-border/30 hover:border-accent/50 hover:bg-accent/5"
+                    "px-3 py-1.5 rounded-full border text-xs font-hand-secondary transition-all",
+                    !showLearningOnly
+                      ? "bg-accent text-accent-foreground border-accent"
+                      : "bg-card border-border/40 hover:border-accent/50 hover:bg-accent/5"
                   )}
                 >
-                  <span className="text-lg">{emoji}</span>
-                  {cat} ({catWords.length})
+                  All Words
                 </button>
-              );
-            })}
-          </div>
+                <button
+                  onClick={() => setShowLearningOnly(true)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full border text-xs font-hand-secondary transition-all",
+                    showLearningOnly
+                      ? "bg-success/20 text-success border-success/30"
+                      : "bg-card border-border/40 hover:border-success/40 hover:bg-success/5"
+                  )}
+                >
+                  My Garden ({userWords.length})
+                </button>
+                <button
+                  onClick={() => setShowFavorites((prev) => !prev)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full border text-xs font-hand-secondary transition-all",
+                    showFavorites
+                      ? "bg-destructive/15 text-destructive border-destructive/30"
+                      : "bg-card border-border/40 hover:border-destructive/40 hover:bg-destructive/5"
+                  )}
+                >
+                  Favorites
+                </button>
+                <button
+                  onClick={() => setShowDueOnly((prev) => !prev)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full border text-xs font-hand-secondary transition-all",
+                    showDueOnly
+                      ? "bg-warning/20 text-warning border-warning/30"
+                      : "bg-card border-border/40 hover:border-warning/40 hover:bg-warning/5"
+                  )}
+                >
+                  Due Now ({wordsNeedingWater.length})
+                </button>
+
+                <button
+                  onClick={() => {
+                    setSelectedCategory("all");
+                    setSelectedStage("all");
+                    setShowFavorites(false);
+                    setShowLearningOnly(false);
+                    setShowDueOnly(false);
+                  }}
+                  className="ml-auto px-3 py-1.5 rounded-full border border-border/40 text-xs font-hand-secondary text-muted-foreground hover:text-foreground hover:border-accent/40 hover:bg-accent/5 transition-all"
+                >
+                  Reset Filters
+                </button>
+              </div>
+
+              <div className="font-hand-secondary text-xs text-muted-foreground">
+                Showing {filteredWords.length} of {baseCount} words
+              </div>
+            </div>
+          </SketchCard>
         </section>
 
         {/* ===== WORD CARDS GRID ===== */}
-        <section className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <section className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredWords.map((word, index) => (
             <WordCard 
               key={word.id}
               word={word}
-              stageInfo={growthStages[word.stage as GrowthStage] ?? growthStages.seed}
+              stageInfo={growthStages[word.growth_stage as GrowthStage] ?? growthStages.seed}
               onToggleFavorite={handleToggleFavorite}
               onPlayAudio={playPronunciation}
               index={index}
@@ -472,8 +591,7 @@ export default function Vocabulary() {
               <p className="font-hand-secondary text-sm text-muted-foreground">Complete lessons to grow your garden</p>
             </div>
           </div>
-        </section>
-      </AppLayout>
-    </ProtectedRoute>
+      </section>
+    </>
   );
 }

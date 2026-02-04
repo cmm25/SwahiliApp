@@ -4,7 +4,6 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { AppLayout } from "@/components/layout/AppLayout";
 import { SketchCard } from "@/components/shared/SketchCard";
 import { SketchButton } from "@/components/shared/SketchButton";
 import { SketchStar, SketchFlame } from "@/components/shared/HandDrawnIcons";
@@ -125,7 +124,7 @@ export default function LessonDetailPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const { addXp, logActivity } = useStreak();
-  const { isLessonCompleted, getLessonProgress, markLessonComplete } = useLessonProgress();
+  const { isLessonCompleted, markLessonComplete } = useLessonProgress();
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -346,57 +345,50 @@ export default function LessonDetailPage() {
 
   if (isLoading) {
     return (
-      <AppLayout>
-        <div className="max-w-2xl mx-auto relative">
-          <LessonBackground particles={particles} />
-          <div className="relative z-10 text-center py-20">
-            <p className="font-hand text-xl text-muted-foreground">Loading lesson...</p>
-          </div>
+      <div className="max-w-2xl mx-auto relative">
+        <LessonBackground particles={particles} />
+        <div className="relative z-10 text-center py-20">
+          <p className="font-hand text-xl text-muted-foreground">Loading lesson...</p>
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
   if (!lessonMeta) {
     return (
-      <AppLayout>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center relative">
-          <LessonBackground particles={particles} />
-          <div className="relative z-10">
-            <div className="text-8xl mb-6 animate-bounce">🦁</div>
-            <h1 className="font-hand text-4xl mb-3">Somo Halipatikani</h1>
-            <p className="font-hand-secondary text-lg text-muted-foreground mb-8">Lesson not found</p>
-            <SketchButton onClick={() => router.push("/lessons")} size="lg">
-              <ArrowLeft size={18} />
-              Back to Lessons
-            </SketchButton>
-          </div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center relative">
+        <LessonBackground particles={particles} />
+        <div className="relative z-10">
+          <div className="text-8xl mb-6 animate-bounce">🦁</div>
+          <h1 className="font-hand text-4xl mb-3">Somo Halipatikani</h1>
+          <p className="font-hand-secondary text-lg text-muted-foreground mb-8">Lesson not found</p>
+          <SketchButton onClick={() => router.push("/lessons")} size="lg">
+            <ArrowLeft size={18} />
+            Back to Lessons
+          </SketchButton>
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
   if (!currentLesson) {
     return (
-      <AppLayout>
-        <div className="max-w-2xl mx-auto relative">
-          <LessonBackground particles={particles} />
-          <div className="relative z-10 text-center py-20">
-            <p className="font-hand text-xl text-muted-foreground">
-              No vocabulary found for this lesson yet.
-            </p>
-          </div>
+      <div className="max-w-2xl mx-auto relative">
+        <LessonBackground particles={particles} />
+        <div className="relative z-10 text-center py-20">
+          <p className="font-hand text-xl text-muted-foreground">
+            No vocabulary found for this lesson yet.
+          </p>
         </div>
-      </AppLayout>
+      </div>
     );
   }
 
   const TypeIcon = typeConfig.icon;
 
   return (
-    <AppLayout>
-      <div className="max-w-2xl mx-auto relative">
-        <LessonBackground particles={particles} />
+    <div className="max-w-2xl mx-auto relative">
+      <LessonBackground particles={particles} />
 
         <div className="relative z-10 mb-8">
           <SketchCard className="!p-4 backdrop-blur-sm bg-card/80">
@@ -667,19 +659,5 @@ export default function LessonDetailPage() {
           </div>
         )}
       </div>
-
-      <style>{`
-        @keyframes fall {
-          0% {
-            transform: translateY(0) rotate(0deg);
-            opacity: 1;
-          }
-          100% {
-            transform: translateY(100vh) rotate(720deg);
-            opacity: 0;
-          }
-        }
-      `}</style>
-    </AppLayout>
   );
 }

@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { AppLayout } from "@/components/layout/AppLayout";
 import { SketchCard } from "@/components/shared/SketchCard";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { LevelProgress } from "@/components/shared/LevelProgress";
@@ -15,7 +13,6 @@ import { ProfileAvatar } from "@/components/profile/ProfileAvatar";
 import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
 import { AdminDashboard } from "@/components/admin";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { useStreak } from "@/hooks/useStreak";
 import { useProfile } from "@/hooks/useProfile";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
@@ -27,13 +24,11 @@ const unlockedBadges: BadgeType[] = ["first_lesson", "streak_7", "words_100"];
 export default function Profile() {
   const { streak, xp } = useStreak();
   const { profile, isLoading: profileLoading, updateProfile } = useProfile();
-  const { isAdmin, isLoading: adminLoading } = useIsAdmin();
+  const { isAdmin } = useIsAdmin();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [showAdminDashboard, setShowAdminDashboard] = useState(false);
   
-  const { signOut, user } = useAuth();
-  const { toast } = useToast();
-  const router = useRouter();
+  const { user } = useAuth();
   
   // Calculate level from XP
   const level = Math.floor(xp / 500) + 1;
@@ -51,20 +46,9 @@ export default function Profile() {
     }
   };
 
-  const handleLogout = async () => {
-    await signOut();
-    toast({
-      title: "Kwaheri! (Goodbye!)",
-      description: "You have been logged out.",
-    });
-    router.push("/");
-  };
-
   if (profileLoading) {
     return (
-      <AppLayout>
-        <ProfileSkeleton />
-      </AppLayout>
+      <ProfileSkeleton />
     );
   }
 
@@ -72,7 +56,7 @@ export default function Profile() {
   const avatar = profile?.avatar || "lion";
 
   return (
-    <AppLayout>
+    <>
       <PageHeader 
         title="Wasifu" 
         subtitle="Your learning profile" 
@@ -174,6 +158,6 @@ export default function Profile() {
         initialData={{ displayName, avatar }}
         onSave={handleSaveProfile}
       />
-    </AppLayout>
+    </>
   );
 }

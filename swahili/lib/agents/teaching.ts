@@ -7,6 +7,7 @@ import {
   STAGE_PROGRESSION,
   TeachingRequest,
   TeachingResponse,
+  normalizeGrowthStage,
 } from './teaching-shared';
 
 const TEACHING_SYSTEM_PROMPT = `You are Mwalimu (Teacher), the Teaching Agent for Rafiki - a Swahili learning platform.
@@ -155,19 +156,20 @@ async function reviewWord(request: TeachingRequest): Promise<TeachingResponse> {
     };
   }
 
-  const { nextStage, xpEarned } = calculateNextStage(word.stage, performance);
+  const currentStage = normalizeGrowthStage(word.growth_stage ?? word.stage);
+  const { nextStage, xpEarned } = calculateNextStage(currentStage, performance);
   const nextReviewDate = calculateNextReviewDate(nextStage);
 
-  const stageChange = nextStage !== word.stage;
+  const stageChange = nextStage !== currentStage;
   const isProgression =
-    STAGE_PROGRESSION.indexOf(nextStage) > STAGE_PROGRESSION.indexOf(word.stage);
+    STAGE_PROGRESSION.indexOf(nextStage) > STAGE_PROGRESSION.indexOf(currentStage);
 
   const prompt = `The learner just practiced this word:
 
 Swahili: ${word.swahili}
 English: ${word.english}
 Performance: ${performance}
-Current Stage: ${word.stage}
+Current Stage: ${currentStage}
 ${stageChange ? `New Stage: ${nextStage} (${isProgression ? 'GROWTH!' : 'needs more practice'})` : 'Stage: unchanged'}
 
 Provide brief, encouraging feedback (2-3 sentences). ${
@@ -201,7 +203,7 @@ Provide brief, encouraging feedback (2-3 sentences). ${
       action: 'review',
       wordId: word.id,
       performance,
-      stageChange: stageChange ? `${word.stage} → ${nextStage}` : 'none',
+      stageChange: stageChange ? `${currentStage} → ${nextStage}` : 'none',
     },
     tags: ['teaching', 'review', performance],
   });
@@ -210,7 +212,7 @@ Provide brief, encouraging feedback (2-3 sentences). ${
     success: true,
     action: 'review',
     content: responseText,
-    words: [{ ...word, stage: nextStage }],
+    words: [{ ...word, growth_stage: nextStage }],
     nextStage,
     xpEarned,
     nextReviewDate: nextReviewDate.toISOString(),
@@ -244,7 +246,7 @@ async function practiceSession(request: TeachingRequest): Promise<TeachingRespon
   }
 
   const wordList = dueWords
-    .map(w => `- ${w.swahili} (${w.english}) [${w.stage}]`)
+    .map(w => `- ${w.swahili} (${w.english}) [${w.growth_stage}]`)
     .join('\n');
 
   const prompt = `Start a practice session with these ${dueWords.length} words:
@@ -312,13 +314,14 @@ function updateWordProgress(request: TeachingRequest): TeachingResponse {
     };
   }
 
-  const { nextStage, xpEarned } = calculateNextStage(word.stage, performance);
+  const currentStage = normalizeGrowthStage(word.growth_stage ?? word.stage);
+  const { nextStage, xpEarned } = calculateNextStage(currentStage, performance);
   const nextReviewDate = calculateNextReviewDate(nextStage);
 
   return {
     success: true,
     action: 'update_progress',
-    words: [{ ...word, stage: nextStage }],
+    words: [{ ...word, growth_stage: nextStage }],
     nextStage,
     xpEarned,
     nextReviewDate: nextReviewDate.toISOString(),
