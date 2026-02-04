@@ -1,5 +1,3 @@
-'use client';
-
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,8 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 export interface Profile {
   id: string;
   user_id: string;
-  display_name: string;
-  avatar: string;
+  display_name: string | null;
+  avatar: string | null;
+  onboarding_completed: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -17,7 +16,11 @@ interface UseProfileReturn {
   profile: Profile | null;
   isLoading: boolean;
   error: Error | null;
-  updateProfile: (data: { display_name?: string; avatar?: string }) => Promise<{ error: Error | null }>;
+  updateProfile: (data: { 
+    display_name?: string; 
+    avatar?: string; 
+    onboarding_completed?: boolean 
+  }) => Promise<{ error: Error | null }>;
   refetch: () => Promise<void>;
 }
 
@@ -69,7 +72,11 @@ export function useProfile(): UseProfileReturn {
     fetchProfile();
   }, [fetchProfile]);
 
-  const updateProfile = async (data: { display_name?: string; avatar?: string }) => {
+  const updateProfile = async (data: { 
+    display_name?: string; 
+    avatar?: string; 
+    onboarding_completed?: boolean 
+  }) => {
     if (!user) {
       return { error: new Error("Not authenticated") };
     }

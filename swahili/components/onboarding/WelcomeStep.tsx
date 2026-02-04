@@ -4,6 +4,14 @@ import { ArrowRight, Sparkles } from "lucide-react";
 import { SketchButton } from "@/components/shared/SketchButton";
 import { useEffect, useState } from "react";
 
+import { 
+  AnimatedBaobab, 
+  AnimatedGiraffe, 
+  AnimatedSunrise,
+  FloatingElement,
+  AnimatedSparkle
+} from "@/components/shared/AnimatedDoodles";
+
 interface WelcomeStepProps {
   onNext: () => void;
 }
@@ -35,7 +43,25 @@ export function WelcomeStep({ onNext }: WelcomeStepProps) {
   const currentWord = swahiliWords[currentWordIndex];
 
   return (
-    <div className="text-center max-w-lg mx-auto">
+    <div className="text-center max-w-lg mx-auto relative">
+      {/* Decorative animated elements around the welcome card */}
+      <div className="absolute -top-20 -left-20 opacity-20 hidden md:block">
+        <FloatingElement delay={0.5}>
+          <AnimatedBaobab className="w-32 h-40 text-foreground" />
+        </FloatingElement>
+      </div>
+      <div className="absolute -top-16 -right-16 opacity-20 hidden md:block">
+        <FloatingElement delay={0.8}>
+          <AnimatedGiraffe className="w-28 h-36 text-foreground" />
+        </FloatingElement>
+      </div>
+      <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 opacity-15">
+        <AnimatedSunrise className="w-48 h-24 text-accent" />
+      </div>
+      {/* Floating sparkles */}
+      <AnimatedSparkle className="absolute top-4 right-8 text-accent" delay={1.5} size={16} />
+      <AnimatedSparkle className="absolute bottom-8 left-12 text-accent" delay={2} size={12} />
+
       {/* Animated greeting */}
       <div className="mb-8 h-32 flex flex-col items-center justify-center">
         <div

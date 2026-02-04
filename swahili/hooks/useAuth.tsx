@@ -80,7 +80,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    // Optimistically clear local state for faster UI response
+    setSession(null);
+    setUser(null);
+    setIsLoading(false);
+
+    // Fire-and-forget server sign out (token revocation)
+    supabase.auth.signOut().catch((error) => {
+      console.error("Error signing out:", error);
+    });
   };
 
   return (

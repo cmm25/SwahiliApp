@@ -40,12 +40,12 @@ export function DailyArticleFeature({ className }: DailyArticleFeatureProps) {
       setIsLoading(true);
 
       try {
-        console.log("[DailyArticleFeature] Calling article-agent curate...");
+        // console.log("[DailyArticleFeature] Calling article-agent curate...");
 
         const { data: sessionData } = await supabase.auth.getSession();
         const accessToken = sessionData.session?.access_token;
         if (!accessToken) {
-          console.warn("[DailyArticleFeature] No session found, using fallback article");
+          // console.warn("[DailyArticleFeature] No session found, using fallback article");
           setDailyArticle(FALLBACK_ARTICLE);
           setTopic("");
           setIsLoading(false);
@@ -69,11 +69,14 @@ export function DailyArticleFeature({ className }: DailyArticleFeatureProps) {
         } catch {
           data = { raw: rawText };
         }
-        console.log("[DailyArticleFeature] Agent response:", data);
+        // console.log("[DailyArticleFeature] Agent response:", data);
 
         if (!response.ok) {
           const errorDetail = data?.error || data?.message || rawText || "Failed to fetch daily article";
-          throw new Error(errorDetail);
+          console.error("[DailyArticleFeature] API Error:", errorDetail);
+          // Don't throw, just use fallback to prevent UI crash
+          setDailyArticle(FALLBACK_ARTICLE);
+          return; 
         }
 
         if (data?.article) {
@@ -88,7 +91,7 @@ export function DailyArticleFeature({ className }: DailyArticleFeatureProps) {
           setDailyArticle(article);
           setTopic(data.topic || "");
         } else {
-          console.log("[DailyArticleFeature] No article in response, using fallback");
+          // console.log("[DailyArticleFeature] No article in response, using fallback");
           setDailyArticle(FALLBACK_ARTICLE);
         }
       } catch (err) {

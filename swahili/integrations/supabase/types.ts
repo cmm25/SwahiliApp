@@ -237,31 +237,34 @@ export type Database = {
       }
       profiles: {
         Row: {
-          avatar: string
+          avatar: string | null
           created_at: string
           daily_goal_minutes: number
-          display_name: string
+          display_name: string | null
           id: string
+          onboarding_completed: boolean
           preferred_difficulty: Database["public"]["Enums"]["difficulty_level"]
           updated_at: string
           user_id: string
         }
         Insert: {
-          avatar?: string
+          avatar?: string | null
           created_at?: string
           daily_goal_minutes?: number
-          display_name?: string
+          display_name?: string | null
           id?: string
+          onboarding_completed?: boolean
           preferred_difficulty?: Database["public"]["Enums"]["difficulty_level"]
           updated_at?: string
           user_id: string
         }
         Update: {
-          avatar?: string
+          avatar?: string | null
           created_at?: string
           daily_goal_minutes?: number
-          display_name?: string
+          display_name?: string | null
           id?: string
+          onboarding_completed?: boolean
           preferred_difficulty?: Database["public"]["Enums"]["difficulty_level"]
           updated_at?: string
           user_id?: string

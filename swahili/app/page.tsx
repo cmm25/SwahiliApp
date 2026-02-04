@@ -17,7 +17,10 @@ import {
   AnimatedSquiggle,
   AnimatedArrowPointer,
   AnimatedConfetti,
-  AnimatedPattern
+  AnimatedPattern,
+  AnimatedBaobab,
+  AnimatedButterfly,
+  AnimatedSunrise
 } from '@/components/landingpage/AnimatedDoodles';
 import { HandDrawnButton } from '@/components/landingpage/HandDrawnButton';
 import { AnimatedCounter } from '@/components/landingpage/TextAnimations';
@@ -57,7 +60,7 @@ const Index = () => {
       {/* Navigation */}
       <nav className="absolute top-6 md:top-10 lg:top-14 left-6 md:left-12 lg:left-16 right-6 md:right-12 lg:right-16 flex justify-between items-center z-20">
         <div className="font-hand text-2xl md:text-3xl text-foreground flex items-center gap-2 opacity-0 animate-fade-in-up" style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}>
-          <AnimatedStar delay={0.5} className="w-6 h-6 md:w-8 md:h-8 text-foreground" />
+          <AnimatedStar delay={0.5} className="w-6 h-6 md:w-8 md:h-8 text-foreground drop-shadow-[0_0_6px_rgba(255,255,255,0.6)]" />
           <span>Swahili</span>
         </div>
 
@@ -183,13 +186,13 @@ const Index = () => {
             </FloatingElement>
             {/* Animated stars */}
             <FloatingElement delay={0.5} amplitude={5} duration={3}>
-              <AnimatedStar delay={2} className="absolute top-8 right-8 w-8 xl:w-10 h-8 xl:h-10 text-accent animate-pulse-glow" />
+              <AnimatedStar delay={2} className="absolute top-8 right-8 w-8 xl:w-10 h-8 xl:h-10 text-accent animate-pulse-glow drop-shadow-[0_0_10px_rgba(255,153,51,0.9)]" />
             </FloatingElement>
             <FloatingElement delay={1.5} amplitude={4} duration={2.5}>
-              <AnimatedStar delay={2.3} className="absolute bottom-28 left-8 w-6 h-6 text-accent/70" />
+              <AnimatedStar delay={2.3} className="absolute bottom-28 left-8 w-6 h-6 text-accent drop-shadow-[0_0_8px_rgba(255,153,51,0.7)]" />
             </FloatingElement>
             <FloatingElement delay={2} amplitude={3} duration={4}>
-              <AnimatedStar delay={2.6} className="absolute top-1/3 -right-4 w-5 h-5 text-foreground/50" />
+              <AnimatedStar delay={2.6} className="absolute top-1/3 -right-4 w-5 h-5 text-foreground/70 drop-shadow-[0_0_6px_rgba(255,255,255,0.5)]" />
             </FloatingElement>
 
             {/* Speech bubbles */}
@@ -242,6 +245,24 @@ const Index = () => {
 
             <FloatingElement delay={1.2} amplitude={4} duration={5}>
               <AnimatedRocket className="absolute -top-10 left-1/2 w-12 h-20 opacity-80" />
+            </FloatingElement>
+
+            {/* New doodles */}
+            <FloatingElement delay={0.9} amplitude={6} duration={4.2}>
+              <ParallaxElement speed={0.2} className="absolute top-6 -left-6">
+                <AnimatedButterfly className="w-14 h-12 text-accent/60" />
+              </ParallaxElement>
+            </FloatingElement>
+            <FloatingElement delay={1.6} amplitude={5} duration={4.6}>
+              <ParallaxElement speed={-0.25} className="absolute bottom-6 -right-4">
+                <AnimatedBaobab className="w-20 h-28 text-foreground/50" />
+              </ParallaxElement>
+            </FloatingElement>
+
+            <FloatingElement delay={1.1} amplitude={6} duration={4.6}>
+              <ParallaxElement speed={0.15} className="absolute -top-2 right-6">
+                <AnimatedSunrise className="w-28 h-16 text-accent drop-shadow-[0_0_12px_rgba(255,153,51,0.8)]" />
+              </ParallaxElement>
             </FloatingElement>
           </MouseFollower>
         </div>
