@@ -22,10 +22,10 @@ export const PaperTexture = () => {
 };
 
 // Grid Lines - adds a subtle grid background
-export const GridLines = () => {
+export const GridLines = ({ className = "" }: { className?: string }) => {
   return (
     <div 
-      className="fixed inset-0 pointer-events-none z-[0] opacity-[0.02]"
+      className={`fixed inset-0 pointer-events-none z-[0] opacity-[0.02] ${className}`}
       style={{
         backgroundImage: `
           linear-gradient(to right, currentColor 1px, transparent 1px),
