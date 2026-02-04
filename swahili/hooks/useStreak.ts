@@ -15,7 +15,7 @@ interface UseStreakReturn {
   level: number;
   isLoading: boolean;
   error: Error | null;
-  logActivity: () => Promise<{ error: Error | null }>;
+  logActivity: (options?: { signal?: AbortSignal }) => Promise<{ error: Error | null }>;
   addXp: (amount: number, source?: string, metadata?: Record<string, any>) => Promise<{ error: Error | null }>;
   refetch: () => Promise<void>;
 }
@@ -25,7 +25,7 @@ const getUntypedClient = () => supabase as any;
 
 
 export function useStreak(): UseStreakReturn {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [streakData, setStreakData] = useState<StreakData>({
     currentStreak: 0,
     lastActivityDate: null,
@@ -54,6 +54,12 @@ export function useStreak(): UseStreakReturn {
         .maybeSingle();
 
       if (fetchError) {
+        // Check for "user not found" scenario (orphaned session)
+        if (fetchError.code === '23503' || fetchError.message?.includes('violates foreign key constraint')) {
+           console.warn("User ID not found in database. Session might be stale. Signing out...");
+           await signOut();
+           return;
+        }
         throw fetchError;
       }
 
@@ -161,20 +167,45 @@ export function useStreak(): UseStreakReturn {
     fetchStreak();
   }, [fetchStreak]);
 
-  const logActivity = async () => {
+  const logActivity = async (options: { signal?: AbortSignal } = {}) => {
     if (!user) {
       return { error: new Error("Not authenticated") };
     }
 
     try {
+      const { signal } = options;
+      if (signal?.aborted) {
+        return { error: null };
+      }
+
+      // Validate session before attempting DB write to avoid RLS/Foreign Key errors
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !sessionData.session) {
+        // Treat as a no-op during logout/session transitions
+        return { error: null };
+      }
+
+      // Double-check the token by asking auth server for current user
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) {
+        // Session is stale/invalid; clear it and bail out
+        await signOut();
+        return { error: null };
+      }
+
       const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
 
       // Get current progress
-      const { data: currentData } = await getUntypedClient()
+      let progressQuery = getUntypedClient()
         .from("learning_progress")
         .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
+      if (signal) {
+        progressQuery = progressQuery.abortSignal(signal);
+      }
+      const { data: currentData } = await progressQuery;
 
     const lastActivity = currentData?.last_activity_date ?? null;
     let newStreak = currentData?.streak_days || 0;
@@ -202,7 +233,7 @@ export function useStreak(): UseStreakReturn {
       newStreak = 1;
     }
 
-    const { error: updateError } = await getUntypedClient()
+    let updateQuery = getUntypedClient()
       .from("learning_progress")
       .upsert(
         {
@@ -212,6 +243,10 @@ export function useStreak(): UseStreakReturn {
         },
         { onConflict: "user_id" }
       );
+    if (signal) {
+      updateQuery = updateQuery.abortSignal(signal);
+    }
+    const { error: updateError } = await updateQuery;
 
     if (updateError) throw updateError;
 
@@ -219,7 +254,28 @@ export function useStreak(): UseStreakReturn {
       await fetchStreak();
 
       return { error: null };
-    } catch (err) {
+    } catch (err: any) {
+      // Ignore abort errors (component unmount or logout)
+      if (err?.name === "AbortError" || err?.message?.includes("signal is aborted")) {
+        return { error: null };
+      }
+
+      // Handle orphaned session or RLS violation without noisy logs during logout
+      if (
+        err?.code === '23503' || // Foreign key violation (user not found)
+        err?.code === '42501' || // RLS violation (often due to auth mismatch)
+        err?.message?.includes('violates foreign key constraint')
+      ) {
+        await signOut();
+        return { error: null };
+      }
+
+      // Ignore unauthorized errors caused by invalid sessions
+      if (err?.status === 401 || err?.message?.includes("Unauthorized")) {
+        await signOut();
+        return { error: null };
+      }
+
       console.error("Error logging activity:", err);
       return { error: err as Error };
     }

@@ -51,6 +51,7 @@ export default function Onboarding() {
     const { error } = await updateProfile({
       display_name: displayName.trim(),
       avatar: selectedAvatar,
+      onboarding_completed: true,
     });
     if (error) {
       toast({
@@ -120,15 +121,7 @@ export default function Onboarding() {
           )}
         </div>
 
-        {/* Skip option (subtle) */}
-        {step !== "complete" && (
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="absolute bottom-6 font-hand-secondary text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4"
-          >
-            Skip for now
-          </button>
-        )}
+        {/* Skip option removed to enforce onboarding */}
       </div>
     </ProtectedRoute>
   );

@@ -47,7 +47,34 @@ export function AppLayout({ children }: AppLayoutProps) {
   // Log activity when user visits the app
   useEffect(() => {
     if (!isLoading && user?.id) {
-      logActivity();
+      const controller = new AbortController();
+
+      logActivity({ signal: controller.signal }).then(({ error }) => {
+        if (error) {
+          const errorCode = (error as { code?: string; name?: string } | null)?.code;
+          const message = error.message;
+          const name = (error as { name?: string } | null)?.name;
+
+          // Ignore benign errors during logout/session transitions
+          if (
+            message === "No active session" ||
+            message === "Not authenticated" ||
+            name === "AbortError" ||
+            message?.includes("signal is aborted")
+          ) {
+            return;
+          }
+
+          // Skip logging empty errors
+          if (!message && !errorCode) {
+            return;
+          }
+
+          console.error("Activity log failed:", error);
+        }
+      });
+
+      return () => controller.abort();
     }
   }, [isLoading, logActivity, user?.id]);
 
