@@ -4,10 +4,13 @@ import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
   calculateNextStage,
+  calculateSM2,
   filterDueWords,
-  masteryLevelToStage,
-  stageToMasteryLevel,
+  normalizeGrowthStage,
+  performanceToQuality,
   TeachingResponse,
+  UserWord,
+  UserVocabulary,
   VocabularyWord,
 } from '@/lib/agents/teaching-shared';
 import { useAuth } from './useAuth';
@@ -16,7 +19,7 @@ import { useStreak } from './useStreak';
 interface TeachingApiRequest {
   action: 'introduce' | 'review' | 'practice' | 'get_due_words' | 'update_progress';
   wordId?: string;
-  words?: VocabularyWord[];
+  words?: UserWord[];
   performance?: 'perfect' | 'good' | 'struggled' | 'forgot';
   context?: string;
   sessionId?: string;
@@ -28,6 +31,35 @@ export function useTeaching() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const sessionIdRef = useRef<string | null>(null);
+
+  const defaultEaseFactor = 2.5;
+  const defaultIntervalDays = 1;
+
+  const buildUserWord = (word: VocabularyWord, progress?: UserVocabulary | null): UserWord => {
+    const baseStage = normalizeGrowthStage(word.stage);
+    const progressStage = progress?.growth_stage
+      ? normalizeGrowthStage(progress.growth_stage)
+      : baseStage;
+
+    return {
+      id: word.id,
+      swahili: word.swahili,
+      english: word.english,
+      category: word.category ?? null,
+      stage: word.stage ?? null,
+      created_at: word.created_at ?? null,
+      userVocabId: progress?.id ?? null,
+      growth_stage: progressStage,
+      ease_factor: progress?.ease_factor ?? defaultEaseFactor,
+      interval_days: progress?.interval_days ?? defaultIntervalDays,
+      repetitions: progress?.repetitions ?? 0,
+      next_review_at: progress?.next_review_at ?? null,
+      last_reviewed_at: progress?.last_reviewed_at ?? null,
+      correct_count: progress?.correct_count ?? 0,
+      incorrect_count: progress?.incorrect_count ?? 0,
+      is_favorite: progress?.is_favorite ?? false,
+    };
+  };
 
   if (sessionIdRef.current === null && typeof window !== 'undefined') {
     const storageKey = 'rafiki_session_id';
@@ -74,21 +106,14 @@ export function useTeaching() {
     [session?.access_token]
   );
 
-  const fetchVocabulary = useCallback(async (): Promise<VocabularyWord[]> => {
+  const fetchVocabulary = useCallback(async (): Promise<UserWord[]> => {
     if (!user?.id) return [];
 
     const { data: words, error: wordsError } = await (supabase
       .from('vocabulary_words' as never)
-      .select('*')
+      .select('id, swahili, english, stage, category, created_at')
       .order('created_at', { ascending: false }) as unknown as Promise<{
-      data: Array<{
-        id: string;
-        swahili: string;
-        english: string;
-        category?: string | null;
-        stage?: string | null;
-        created_at: string;
-      }> | null;
+      data: VocabularyWord[] | null;
       error: Error | null;
     }>);
 
@@ -102,15 +127,21 @@ export function useTeaching() {
     }
 
     const { data: progress, error: progressError } = await (supabase
-      .from('user_word_progress' as never)
-      .select('word_id, is_favorite, last_practiced, times_practiced, mastery_level')
+      .from('user_vocabulary' as never)
+      .select('id, word_id, growth_stage, ease_factor, interval_days, repetitions, next_review_at, last_reviewed_at, correct_count, incorrect_count, is_favorite')
       .eq('user_id', user.id) as unknown as Promise<{
       data: Array<{
+        id: string;
         word_id: string;
+        growth_stage: string;
+        ease_factor: number;
+        interval_days: number;
+        repetitions: number;
+        next_review_at: string;
+        last_reviewed_at: string | null;
+        correct_count: number;
+        incorrect_count: number;
         is_favorite: boolean | null;
-        last_practiced: string | null;
-        times_practiced: number | null;
-        mastery_level: number | null;
       }> | null;
       error: Error | null;
     }>);
@@ -126,25 +157,13 @@ export function useTeaching() {
       (progress ?? []).map(item => [item.word_id, item])
     );
 
-    return (words ?? [])
-      .filter(row => progressByWordId.has(row.id))
-      .map(row => {
-        const progressRow = progressByWordId.get(row.id);
-        const masteryLevel = progressRow?.mastery_level ?? 0;
-        return {
-          id: row.id,
-          swahili: row.swahili,
-          english: row.english,
-          category: row.category ?? null,
-          mastery_level: masteryLevel,
-          stage: masteryLevelToStage(masteryLevel),
-          is_favorite: progressRow?.is_favorite ?? false,
-          last_practiced: progressRow?.last_practiced ?? null,
-          times_practiced: progressRow?.times_practiced ?? 0,
-          created_at: row.created_at,
-        };
-      });
+    return (words ?? []).map(row => buildUserWord(row, progressByWordId.get(row.id) ?? null));
   }, [user?.id]);
+
+  const fetchUserWords = useCallback(async (): Promise<UserWord[]> => {
+    const words = await fetchVocabulary();
+    return words.filter(word => Boolean(word.userVocabId));
+  }, [fetchVocabulary]);
 
   const fetchVocabularyCount = useCallback(async (): Promise<number> => {
     const { count, error } = await (supabase
@@ -165,8 +184,8 @@ export function useTeaching() {
     return count ?? 0;
   }, []);
 
-  const addWord = useCallback(
-    async (swahili: string, english: string): Promise<VocabularyWord | null> => {
+  const addWordToLearning = useCallback(
+    async (wordId: string): Promise<UserWord | null> => {
       if (!user?.id) {
         setError('Must be logged in to add words');
         return null;
@@ -176,43 +195,52 @@ export function useTeaching() {
       setError(null);
 
       try {
-        const { data, error } = await (supabase
+        const { data: word, error: wordError } = await (supabase
           .from('vocabulary_words' as never)
+          .select('id, swahili, english, stage, category, created_at')
+          .eq('id', wordId)
+          .single() as unknown as Promise<{ data: VocabularyWord | null; error: Error | null }>);
+
+        if (wordError || !word) {
+          throw wordError ?? new Error('Word not found');
+        }
+
+        const { data: existing } = await (supabase
+          .from('user_vocabulary' as never)
+          .select('id, word_id, growth_stage, ease_factor, interval_days, repetitions, next_review_at, last_reviewed_at, correct_count, incorrect_count, is_favorite')
+          .eq('user_id', user.id)
+          .eq('word_id', wordId)
+          .maybeSingle() as unknown as Promise<{ data: UserVocabulary | null }>);
+
+        if (existing) {
+          setError('Already learning this word');
+          return buildUserWord(word, existing);
+        }
+
+        const now = new Date().toISOString();
+        const { data: inserted, error: insertError } = await (supabase
+          .from('user_vocabulary' as never)
           .insert({
-            swahili,
-            english,
+            user_id: user.id,
+            word_id: wordId,
+            growth_stage: 'seed',
+            ease_factor: defaultEaseFactor,
+            interval_days: defaultIntervalDays,
+            repetitions: 0,
+            next_review_at: now,
+            last_reviewed_at: null,
+            correct_count: 0,
+            incorrect_count: 0,
+            is_favorite: false,
           } as never)
           .select()
-          .single() as unknown as Promise<{
-          data: { id: string; swahili: string; english: string; category?: string | null; created_at: string } | null;
-          error: Error | null;
-        }>);
+          .single() as unknown as Promise<{ data: UserVocabulary | null; error: Error | null }>);
 
-        if (error) throw error;
-        if (!data) return null;
+        if (insertError || !inserted) {
+          throw insertError ?? new Error('Failed to add word');
+        }
 
-        await (supabase
-          .from('user_word_progress' as never)
-          .upsert({
-            user_id: user.id,
-            word_id: data.id,
-            is_favorite: false,
-            times_practiced: 0,
-            mastery_level: 0,
-          } as never, { onConflict: "user_id,word_id" }) as unknown as Promise<unknown>);
-
-        return {
-          id: data.id,
-          swahili: data.swahili,
-          english: data.english,
-          category: (data as { category?: string | null }).category ?? null,
-          mastery_level: 0,
-          stage: 'seed',
-          is_favorite: false,
-          last_practiced: null,
-          times_practiced: 0,
-          created_at: data.created_at,
-        };
+        return buildUserWord(word, inserted);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to add word';
         setError(message);
@@ -225,7 +253,7 @@ export function useTeaching() {
   );
 
   const introduceWord = useCallback(
-    async (word: VocabularyWord): Promise<TeachingResponse> => {
+    async (word: UserWord): Promise<TeachingResponse> => {
       setIsLoading(true);
       setError(null);
 
@@ -249,7 +277,7 @@ export function useTeaching() {
 
   const reviewWord = useCallback(
     async (
-      word: VocabularyWord,
+      word: UserWord,
       performance: 'perfect' | 'good' | 'struggled' | 'forgot'
     ): Promise<TeachingResponse> => {
       setIsLoading(true);
@@ -263,27 +291,75 @@ export function useTeaching() {
           performance,
         });
 
-        if (response.success && response.nextStage && user?.id) {
-          const nextMastery = stageToMasteryLevel(response.nextStage);
-          await (supabase
-            .from('user_word_progress' as never)
+        if (response.success && user?.id) {
+          const currentStage = normalizeGrowthStage(word.growth_stage ?? word.stage);
+          const calculatedStage = calculateNextStage(currentStage, performance);
+          const nextStage = response.nextStage ?? calculatedStage.nextStage;
+
+          const quality = performanceToQuality(performance);
+          const sm2 = calculateSM2(
+            word.ease_factor ?? defaultEaseFactor,
+            word.interval_days ?? defaultIntervalDays,
+            word.repetitions ?? 0,
+            quality
+          );
+
+          const now = new Date();
+          const nextReviewAt = new Date(now);
+          nextReviewAt.setDate(now.getDate() + sm2.interval);
+
+          const isCorrect = performance === 'perfect' || performance === 'good';
+          const updatedWord: UserWord = {
+            ...word,
+            growth_stage: nextStage,
+            ease_factor: sm2.easeFactor,
+            interval_days: sm2.interval,
+            repetitions: sm2.repetitions,
+            next_review_at: nextReviewAt.toISOString(),
+            last_reviewed_at: now.toISOString(),
+            correct_count: (word.correct_count ?? 0) + (isCorrect ? 1 : 0),
+            incorrect_count: (word.incorrect_count ?? 0) + (!isCorrect ? 1 : 0),
+          };
+
+          const { data: saved, error: saveError } = await (supabase
+            .from('user_vocabulary' as never)
             .upsert({
               user_id: user.id,
               word_id: word.id,
-              mastery_level: nextMastery,
-              last_practiced: new Date().toISOString(),
-              times_practiced: (word.times_practiced ?? 0) + 1,
-            } as never, { onConflict: "user_id,word_id" }) as unknown as Promise<unknown>);
+              growth_stage: nextStage,
+              ease_factor: updatedWord.ease_factor,
+              interval_days: updatedWord.interval_days,
+              repetitions: updatedWord.repetitions,
+              next_review_at: updatedWord.next_review_at,
+              last_reviewed_at: updatedWord.last_reviewed_at,
+              correct_count: updatedWord.correct_count,
+              incorrect_count: updatedWord.incorrect_count,
+              is_favorite: word.is_favorite ?? false,
+            } as never, { onConflict: "user_id,word_id" })
+            .select()
+            .single() as unknown as Promise<{ data: UserVocabulary | null; error: Error | null }>);
 
-          // Award XP and log activity
+          if (saveError) {
+            console.error('Error updating progress:', saveError);
+          } else if (saved?.id) {
+            updatedWord.userVocabId = saved.id;
+            updatedWord.growth_stage = normalizeGrowthStage(saved.growth_stage);
+          }
+
           if (response.xpEarned && response.xpEarned > 0) {
-            await addXp(response.xpEarned, 'vocab_practice', { 
-              wordId: word.id, 
+            await addXp(response.xpEarned, 'vocab_practice', {
+              wordId: word.id,
               swahili: word.swahili,
-              stage: response.nextStage 
+              stage: nextStage,
             });
             await logActivity();
           }
+
+          return {
+            ...response,
+            nextStage,
+            words: [updatedWord],
+          };
         }
 
         return response;
@@ -291,7 +367,7 @@ export function useTeaching() {
         setIsLoading(false);
       }
     },
-    [callTeachingApi]
+    [callTeachingApi, user?.id, addXp, logActivity]
   );
 
   const startPractice = useCallback(async (): Promise<TeachingResponse> => {
@@ -300,7 +376,7 @@ export function useTeaching() {
 
     try {
       // 1. Fetch all words first
-      const words = await fetchVocabulary();
+      const words = await fetchUserWords();
       
       // 2. Filter due words locally (client-side) for speed
       const dueWords = filterDueWords(words).slice(0, 5);
@@ -334,35 +410,72 @@ export function useTeaching() {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchVocabulary, filterDueWords]);
+  }, [fetchUserWords, filterDueWords]);
 
-  const getDueWords = useCallback(async (): Promise<VocabularyWord[]> => {
-    const words = await fetchVocabulary();
+  const getDueWords = useCallback(async (): Promise<UserWord[]> => {
+    const words = await fetchUserWords();
     return filterDueWords(words);
-  }, [fetchVocabulary]);
+  }, [fetchUserWords]);
 
   const toggleFavorite = useCallback(
-    async (wordId: string): Promise<boolean> => {
-      if (!user?.id) return false;
+    async (word: UserWord): Promise<UserWord | null> => {
+      if (!user?.id) return null;
 
-      const { data: progress } = await (supabase
-        .from('user_word_progress' as never)
-        .select('is_favorite')
+      const { data: existing, error: existingError } = await (supabase
+        .from('user_vocabulary' as never)
+        .select('id, word_id, growth_stage, ease_factor, interval_days, repetitions, next_review_at, last_reviewed_at, correct_count, incorrect_count, is_favorite')
         .eq('user_id', user.id)
-        .eq('word_id', wordId)
-        .single() as unknown as Promise<{ data: { is_favorite: boolean } | null }>);
+        .eq('word_id', word.id)
+        .maybeSingle() as unknown as Promise<{ data: UserVocabulary | null; error: Error | null }>);
 
-      if (!progress) return false;
+      if (existingError) {
+        console.error('Error loading favorite state:', existingError);
+        return null;
+      }
 
-      const { error } = await (supabase
-        .from('user_word_progress' as never)
-        .upsert({
+      const nextFavorite = !(existing?.is_favorite ?? word.is_favorite ?? false);
+
+      if (existing) {
+        const { data: updated, error: updateError } = await (supabase
+          .from('user_vocabulary' as never)
+          .update({ is_favorite: nextFavorite } as never)
+          .eq('id', existing.id)
+          .select()
+          .single() as unknown as Promise<{ data: UserVocabulary | null; error: Error | null }>);
+
+        if (updateError || !updated) {
+          console.error('Error updating favorite:', updateError);
+          return null;
+        }
+
+        return buildUserWord(word, updated);
+      }
+
+      const now = new Date().toISOString();
+      const { data: inserted, error: insertError } = await (supabase
+        .from('user_vocabulary' as never)
+        .insert({
           user_id: user.id,
-          word_id: wordId,
-          is_favorite: !progress.is_favorite,
-        } as never, { onConflict: "user_id,word_id" }) as unknown as Promise<{ error: Error | null }>);
+          word_id: word.id,
+          growth_stage: 'seed',
+          ease_factor: defaultEaseFactor,
+          interval_days: defaultIntervalDays,
+          repetitions: 0,
+          next_review_at: now,
+          last_reviewed_at: null,
+          correct_count: 0,
+          incorrect_count: 0,
+          is_favorite: nextFavorite,
+        } as never)
+        .select()
+        .single() as unknown as Promise<{ data: UserVocabulary | null; error: Error | null }>);
 
-      return !error;
+      if (insertError || !inserted) {
+        console.error('Error creating favorite:', insertError);
+        return null;
+      }
+
+      return buildUserWord(word, inserted);
     },
     [user?.id]
   );
@@ -371,8 +484,9 @@ export function useTeaching() {
     isLoading,
     error,
     fetchVocabulary,
+    fetchUserWords,
     fetchVocabularyCount,
-    addWord,
+    addWordToLearning,
     introduceWord,
     reviewWord,
     startPractice,

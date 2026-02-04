@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback } from "react";
+import { useRouter } from "next/navigation";
 
 // Route to component mapping for prefetching
 const routeComponents: Record<string, () => Promise<unknown>> = {
@@ -18,16 +19,19 @@ const routeComponents: Record<string, () => Promise<unknown>> = {
 const prefetchedRoutes = new Set<string>();
 
 export function usePrefetch() {
+  const router = useRouter();
+
   const prefetch = useCallback((path: string) => {
     if (prefetchedRoutes.has(path)) return;
     
     const loader = routeComponents[path];
     if (loader) {
       prefetchedRoutes.add(path);
+      router.prefetch(path);
       // Delay prefetch slightly to not block hover interaction
       requestIdleCallback?.(() => loader()) ?? setTimeout(() => loader(), 100);
     }
-  }, []);
+  }, [router]);
 
   return { prefetch };
 }

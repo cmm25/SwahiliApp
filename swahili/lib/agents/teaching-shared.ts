@@ -1,21 +1,60 @@
+export type GrowthStage = 'seed' | 'sprout' | 'sapling' | 'flower' | 'tree';
+
+// Master word (shared dictionary)
 export interface VocabularyWord {
   id: string;
   swahili: string;
   english: string;
-  category?: string | null;
-  mastery_level: number;
-  stage: string;
+  stage: string | null;
+  category: string | null;
+  created_at: string | null;
+}
+
+// User-specific progress (SRS tracking)
+export interface UserVocabulary {
+  id: string;
+  user_id: string;
+  word_id: string;
+  growth_stage: GrowthStage;
+  ease_factor: number;
+  interval_days: number;
+  repetitions: number;
+  next_review_at: string;
+  last_reviewed_at: string | null;
+  correct_count: number;
+  incorrect_count: number;
+  is_favorite: boolean | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Combined view for UI
+export interface UserWord {
+  // From vocabulary_words
+  id: string;
+  swahili: string;
+  english: string;
+  category: string | null;
+  stage: string | null;
+  created_at: string | null;
+  // From user_vocabulary
+  userVocabId: string | null;
+  growth_stage: GrowthStage;
+  ease_factor: number;
+  interval_days: number;
+  repetitions: number;
+  next_review_at: string | null;
+  last_reviewed_at: string | null;
+  correct_count: number;
+  incorrect_count: number;
   is_favorite: boolean;
-  last_practiced: string | null;
-  times_practiced: number;
-  created_at: string;
 }
 
 export interface TeachingRequest {
   userId: string;
   action: 'introduce' | 'review' | 'practice' | 'get_due_words' | 'update_progress';
   wordId?: string;
-  words?: VocabularyWord[];
+  words?: UserWord[];
   performance?: 'perfect' | 'good' | 'struggled' | 'forgot';
   context?: string;
   sessionId?: string;
@@ -25,14 +64,14 @@ export interface TeachingResponse {
   success: boolean;
   action: string;
   content?: string;
-  words?: VocabularyWord[];
-  nextStage?: string;
+  words?: UserWord[];
+  nextStage?: GrowthStage;
   xpEarned?: number;
   nextReviewDate?: string;
   error?: string;
 }
 
-export const STAGE_INTERVALS: Record<string, number> = {
+export const STAGE_INTERVALS: Record<GrowthStage, number> = {
   seed: 1,
   sprout: 3,
   sapling: 7,
@@ -40,9 +79,31 @@ export const STAGE_INTERVALS: Record<string, number> = {
   tree: 30,
 };
 
-export const STAGE_PROGRESSION: string[] = ['seed', 'sprout', 'sapling', 'flower', 'tree'];
+export const STAGE_PROGRESSION: GrowthStage[] = ['seed', 'sprout', 'sapling', 'flower', 'tree'];
 
-export function masteryLevelToStage(masteryLevel: number): string {
+export function normalizeGrowthStage(stage?: string | null): GrowthStage {
+  switch (stage) {
+    case 'sprout':
+      return 'sprout';
+    case 'sapling':
+      return 'sapling';
+    case 'flower':
+      return 'flower';
+    case 'tree':
+      return 'tree';
+    case 'growing':
+      return 'sapling';
+    case 'blooming':
+      return 'flower';
+    case 'flourishing':
+      return 'tree';
+    case 'seed':
+    default:
+      return 'seed';
+  }
+}
+
+export function masteryLevelToStage(masteryLevel: number): GrowthStage {
   if (masteryLevel >= 4) return 'tree';
   if (masteryLevel === 3) return 'flower';
   if (masteryLevel === 2) return 'sapling';
@@ -50,16 +111,16 @@ export function masteryLevelToStage(masteryLevel: number): string {
   return 'seed';
 }
 
-export function stageToMasteryLevel(stage: string): number {
+export function stageToMasteryLevel(stage: GrowthStage): number {
   const index = STAGE_PROGRESSION.indexOf(stage);
   if (index === -1) return 0;
   return stage === 'tree' ? 5 : Math.min(index, 4);
 }
 
 export function calculateNextStage(
-  currentStage: string,
+  currentStage: GrowthStage,
   performance: 'perfect' | 'good' | 'struggled' | 'forgot'
-): { nextStage: string; xpEarned: number } {
+): { nextStage: GrowthStage; xpEarned: number } {
   const currentIndex = STAGE_PROGRESSION.indexOf(currentStage);
 
   let nextIndex = currentIndex;
@@ -93,24 +154,64 @@ export function calculateNextStage(
   };
 }
 
-export function calculateNextReviewDate(stage: string): Date {
+export function calculateNextReviewDate(stage: GrowthStage): Date {
   const intervalDays = STAGE_INTERVALS[stage] || 1;
   const nextDate = new Date();
   nextDate.setDate(nextDate.getDate() + intervalDays);
   return nextDate;
 }
 
-export function filterDueWords(words: VocabularyWord[]): VocabularyWord[] {
+export function calculateSM2(
+  currentEase: number,
+  currentInterval: number,
+  currentReps: number,
+  quality: number
+): { easeFactor: number; interval: number; repetitions: number } {
+  const nextReps = quality < 3 ? 0 : currentReps + 1;
+
+  let interval = 1;
+  if (nextReps === 1) {
+    interval = 1;
+  } else if (nextReps === 2) {
+    interval = 6;
+  } else {
+    interval = Math.max(1, Math.round(currentInterval * currentEase));
+  }
+
+  const easeFactor =
+    currentEase +
+    (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+
+  return {
+    easeFactor: Math.max(1.3, Number(easeFactor.toFixed(2))),
+    interval,
+    repetitions: nextReps,
+  };
+}
+
+export function performanceToQuality(
+  performance: 'perfect' | 'good' | 'struggled' | 'forgot'
+): number {
+  switch (performance) {
+    case 'perfect':
+      return 5;
+    case 'good':
+      return 4;
+    case 'struggled':
+      return 2;
+    case 'forgot':
+    default:
+      return 0;
+  }
+}
+
+export function filterDueWords(words: UserWord[]): UserWord[] {
   const now = new Date();
 
   return words.filter(word => {
-    if (!word.last_practiced) return true; // Never practiced = due
-
-    const lastPracticed = new Date(word.last_practiced);
-    const intervalDays = STAGE_INTERVALS[word.stage] || 1;
-    const dueDate = new Date(lastPracticed);
-    dueDate.setDate(dueDate.getDate() + intervalDays);
-
+    if (!word.next_review_at) return true;
+    const dueDate = new Date(word.next_review_at);
+    if (Number.isNaN(dueDate.getTime())) return true;
     return now >= dueDate;
   });
 }
