@@ -1,5 +1,3 @@
-import { supabase } from '@/integrations/supabase/client';
-
 export interface AgentTraceInput {
   userId: string;
   agentName: string;
@@ -18,26 +16,14 @@ export interface AgentTraceInput {
  */
 export async function logAgentTrace(trace: AgentTraceInput): Promise<void> {
   try {
-    const { error } = await (supabase.from('agent_traces' as never).insert({
-      user_id: trace.userId,
-      agent_name: trace.agentName,
-      input: trace.input,
-      output: trace.output,
-      duration_ms: trace.latencyMs,
-      feedback_score: trace.evaluationScore,
-      session_id: trace.sessionId ?? null,
-      opik_trace_id: trace.opikTraceId ?? null,
-      metadata: {
-        ...trace.metadata,
-        success: trace.success,
-      },
-    } as never) as unknown as Promise<{ error: Error | null }>);
+    const response = await fetch('/api/agents/quiz-trace', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(trace),
+    });
 
-    if (error) {
-      const message =
-        typeof error === 'object' && error !== null && 'message' in error
-          ? String((error as { message?: unknown }).message ?? '')
-          : '';
+    if (!response.ok) {
+      const message = await response.text();
       if (message) {
         console.warn('Failed to log agent trace:', message);
       }

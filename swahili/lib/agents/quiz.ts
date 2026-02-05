@@ -224,7 +224,7 @@ export async function generateQuiz(request: GenerateQuizRequest): Promise<QuizRe
       output: JSON.stringify({ questionCount: questions.length }),
       latencyMs: Date.now() - startTime,
       success: true,
-      metadata: { action: 'generate', lessonId: request.lessonId },
+      metadata: { action: 'generate', lessonId: request.lessonId, quizLevel: request.lessonId },
     });
 
     return {
@@ -241,6 +241,7 @@ export async function generateQuiz(request: GenerateQuizRequest): Promise<QuizRe
       output: JSON.stringify({ error: errorMessage }),
       latencyMs: Date.now() - startTime,
       success: false,
+      metadata: { action: 'generate', lessonId: request.lessonId, quizLevel: request.lessonId },
     });
 
     return {
@@ -492,7 +493,7 @@ export async function gradeQuiz(request: GradeQuizRequest): Promise<QuizResult> 
       output: JSON.stringify({ score: correctAnswers, xpEarned, percentage }),
       latencyMs: Date.now() - startTime,
       success: true,
-      metadata: { action: 'grade', score: correctAnswers, percentage },
+      metadata: { action: 'grade', score: correctAnswers, percentage, lessonId: session.lessonId, quizLevel: session.lessonId },
     });
 
     return {
