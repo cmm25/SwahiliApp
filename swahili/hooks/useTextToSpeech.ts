@@ -34,7 +34,7 @@ export function useTextToSpeech() {
       setIsLoading(true);
       setIsPlaying(true);
 
-      const response = await fetch('/api/voice/tts', {
+      const response = await fetch('/api/agents/tts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
