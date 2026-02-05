@@ -14,6 +14,10 @@ const TOPICS = [
   "Tanzania Kenya Swahili language",
   "Swahili vocabulary common words beginners",
   "Swahili music culture taarab",
+  "Swahili traditional music instruments",
+  "Swahili traditional dance",
+  "Swahili traditional clothing",
+  "Swahili traditional food",
   "Zanzibar Swahili heritage history",
   "Swahili language learning tips",
 ];

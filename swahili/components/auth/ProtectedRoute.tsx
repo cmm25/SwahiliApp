@@ -1,9 +1,10 @@
 'use client';
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { useToast } from "@/hooks/use-toast";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -11,10 +12,16 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, isLoading: authLoading } = useAuth();
-  const { profile, isLoading: profileLoading } = useProfile();
+  const { profile, isLoading: profileLoading, error: profileError } = useProfile();
   const router = useRouter();
   const pathname = usePathname();
-  const needsOnboarding = user && !profileLoading && (!profile || !profile.onboarding_completed);
+  const { toast } = useToast();
+  const didWarnRef = useRef(false);
+  const needsOnboarding =
+    user &&
+    !profileLoading &&
+    !profileError &&
+    (!profile || !profile.onboarding_completed);
 
   // Handle redirects
   useEffect(() => {
@@ -22,6 +29,19 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     if (authLoading || profileLoading) return;
 
     if (!user) {
+      router.replace("/auth");
+      return;
+    }
+
+    if (profileError) {
+      if (!didWarnRef.current) {
+        didWarnRef.current = true;
+        toast({
+          variant: "destructive",
+          title: "Session expired",
+          description: "Please log in again to continue.",
+        });
+      }
       router.replace("/auth");
       return;
     }
@@ -44,7 +64,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  if (!user) {
+  if (!user || profileError) {
     return null;
   }
   if (needsOnboarding && pathname !== "/onboarding") {

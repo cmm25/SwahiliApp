@@ -52,7 +52,7 @@ export function DailyArticleFeature({ className }: DailyArticleFeatureProps) {
           return;
         }
         
-        const response = await fetch("/api/article-agent-proxy", {
+        const response = await fetch("/api/agents/article-agent-proxy", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -33,15 +33,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
-        console.error("Error checking auth session:", error);
-        // If the refresh token is invalid (e.g. from localStorage/cookies), ensure we clear any stale state
-        // This prevents infinite loop or stuck states for the user
-        if (error.message.includes("Refresh Token Not Found") || error.message.includes("Invalid Refresh Token")) {
-          // Force sign out to clear invalid tokens
-          supabase.auth.signOut().catch(console.error);
+        const message = error.message || "";
+        const isRefreshTokenError =
+          message.includes("Refresh Token Not Found") || message.includes("Invalid Refresh Token");
+        if (isRefreshTokenError) {
+          void supabase.auth.signOut({ scope: "local" });
+        } else {
+          console.error("Error checking auth session:", error);
         }
       }
-      setSession(session);
+      setSession(session ?? null);
       setUser(session?.user ?? null);
       setIsLoading(false);
     }).catch(err => {
