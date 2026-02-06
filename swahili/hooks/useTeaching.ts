@@ -367,6 +367,101 @@ export function useTeaching() {
     [callTeachingApi, user?.id, addXp, logActivity]
   );
 
+  const quickReview = useCallback(
+    async (
+      word: UserWord,
+      performance: 'perfect' | 'good' | 'struggled' | 'forgot'
+    ): Promise<TeachingResponse> => {
+      if (!user?.id) {
+        return { success: false, action: 'review', error: 'Not authenticated' };
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const currentStage = normalizeGrowthStage(word.growth_stage ?? word.stage);
+        const { nextStage, xpEarned } = calculateNextStage(currentStage, performance);
+        
+        const quality = performanceToQuality(performance);
+        const sm2 = calculateSM2(
+          word.ease_factor ?? defaultEaseFactor,
+          word.interval_days ?? defaultIntervalDays,
+          word.repetitions ?? 0,
+          quality
+        );
+
+        const now = new Date();
+        const nextReviewAt = new Date(now);
+        nextReviewAt.setDate(now.getDate() + sm2.interval);
+
+        const isCorrect = performance === 'perfect' || performance === 'good';
+        const updatedWord: UserWord = {
+          ...word,
+          growth_stage: nextStage,
+          ease_factor: sm2.easeFactor,
+          interval_days: sm2.interval,
+          repetitions: sm2.repetitions,
+          next_review_at: nextReviewAt.toISOString(),
+          last_reviewed_at: now.toISOString(),
+          correct_count: (word.correct_count ?? 0) + (isCorrect ? 1 : 0),
+          incorrect_count: (word.incorrect_count ?? 0) + (!isCorrect ? 1 : 0),
+        };
+
+        const { data: saved, error: saveError } = await (supabase
+          .from('user_vocabulary' as never)
+          .upsert({
+            user_id: user.id,
+            word_id: word.id,
+            growth_stage: nextStage,
+            ease_factor: updatedWord.ease_factor,
+            interval_days: updatedWord.interval_days,
+            repetitions: updatedWord.repetitions,
+            next_review_at: updatedWord.next_review_at,
+            last_reviewed_at: updatedWord.last_reviewed_at,
+            correct_count: updatedWord.correct_count,
+            incorrect_count: updatedWord.incorrect_count,
+            is_favorite: word.is_favorite ?? false,
+          } as never, { onConflict: "user_id,word_id" })
+          .select()
+          .single() as unknown as Promise<{ data: UserVocabulary | null; error: Error | null }>);
+
+        if (saveError) {
+          console.error('Error updating progress:', saveError);
+          throw new Error('Failed to save progress');
+        } else if (saved?.id) {
+          updatedWord.userVocabId = saved.id;
+          updatedWord.growth_stage = normalizeGrowthStage(saved.growth_stage);
+        }
+
+        if (xpEarned > 0) {
+          await addXp(xpEarned, 'vocab_practice', {
+            wordId: word.id,
+            swahili: word.swahili,
+            stage: nextStage,
+          });
+          await logActivity();
+        }
+
+        return {
+          success: true,
+          action: 'review',
+          words: [updatedWord],
+          nextStage,
+          xpEarned,
+          nextReviewDate: nextReviewAt.toISOString(),
+        };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Quick review failed';
+        setError(message);
+        return { success: false, action: 'review', error: message };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [user?.id, addXp, logActivity]
+  );
+
   const startPractice = useCallback(async (): Promise<TeachingResponse> => {
     setIsLoading(true);
     setError(null);
@@ -486,6 +581,7 @@ export function useTeaching() {
     addWordToLearning,
     introduceWord,
     reviewWord,
+    quickReview,
     startPractice,
     getDueWords,
     toggleFavorite,

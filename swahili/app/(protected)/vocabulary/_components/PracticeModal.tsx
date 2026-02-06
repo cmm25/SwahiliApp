@@ -22,7 +22,7 @@ interface PracticeModalProps {
   showAnswer: boolean;
   isProcessing: boolean;
   onReveal: () => void;
-  onAnswer: (correct: boolean) => void;
+  onAnswer: (performance: 'perfect' | 'good' | 'struggled' | 'forgot') => void;
   onClose: () => void;
   onPlayPronunciation: (text: string) => void;
 }
@@ -143,42 +143,68 @@ export function PracticeModal({
               </div>
 
               <p className="font-hand-secondary text-center text-sm text-muted-foreground mb-4">
-                Did you remember this word?
+                How well did you know this word?
               </p>
 
-              <div className="flex gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <button
-                  onClick={() => onAnswer(false)}
+                  onClick={() => onAnswer('forgot')}
                   disabled={isProcessing}
                   className={cn(
-                    "flex-1 py-4 bg-destructive/10 hover:bg-destructive/20 border-2 border-destructive/30 rounded-xl flex items-center justify-center gap-2 text-destructive transition-all hover:scale-[1.02]",
+                    "py-3 bg-destructive/10 hover:bg-destructive/20 border-2 border-destructive/30 rounded-xl flex flex-col items-center justify-center gap-1 text-destructive transition-all hover:scale-[1.02]",
                     isProcessing && "opacity-50 cursor-not-allowed transform-none"
                   )}
                 >
-                  <X size={20} />
-                  <span className="font-hand-secondary">Still learning</span>
+                  <span className="text-xl">😓</span>
+                  <span className="font-hand-secondary text-sm font-bold">Forgot</span>
                 </button>
+
                 <button
-                  onClick={() => onAnswer(true)}
+                  onClick={() => onAnswer('struggled')}
                   disabled={isProcessing}
                   className={cn(
-                    "flex-1 py-4 bg-success/10 hover:bg-success/20 border-2 border-success/30 rounded-xl flex items-center justify-center gap-2 text-success transition-all hover:scale-[1.02]",
+                    "py-3 bg-warning/10 hover:bg-warning/20 border-2 border-warning/30 rounded-xl flex flex-col items-center justify-center gap-1 text-warning-foreground transition-all hover:scale-[1.02]",
+                    isProcessing && "opacity-50 cursor-not-allowed transform-none"
+                  )}
+                >
+                  <span className="text-xl">😬</span>
+                  <span className="font-hand-secondary text-sm font-bold">Hard</span>
+                </button>
+
+                <button
+                  onClick={() => onAnswer('good')}
+                  disabled={isProcessing}
+                  className={cn(
+                    "py-3 bg-accent/10 hover:bg-accent/20 border-2 border-accent/30 rounded-xl flex flex-col items-center justify-center gap-1 text-accent transition-all hover:scale-[1.02]",
+                    isProcessing && "opacity-50 cursor-not-allowed transform-none"
+                  )}
+                >
+                  <span className="text-xl">🙂</span>
+                  <span className="font-hand-secondary text-sm font-bold">Good</span>
+                </button>
+
+                <button
+                  onClick={() => onAnswer('perfect')}
+                  disabled={isProcessing}
+                  className={cn(
+                    "py-3 bg-success/10 hover:bg-success/20 border-2 border-success/30 rounded-xl flex flex-col items-center justify-center gap-1 text-success transition-all hover:scale-[1.02]",
                     isProcessing && "opacity-50 cursor-not-allowed transform-none"
                   )}
                 >
                   {isProcessing ? (
-                    <Sparkles size={20} className="animate-spin" />
+                    <Sparkles size={24} className="animate-spin mb-1" />
                   ) : (
-                    <Check size={20} />
+                    <span className="text-xl">🤩</span>
                   )}
-                  <span className="font-hand-secondary">
-                    {isProcessing ? "Growing..." : "Got it! 🌱"}
+                  <span className="font-hand-secondary text-sm font-bold">
+                    {isProcessing ? "Saving..." : "Perfect"}
                   </span>
                 </button>
               </div>
 
               <p className="text-center mt-4 font-hand-secondary text-xs text-muted-foreground">
-                <Sparkles size={12} className="inline text-warning" /> Correct = +{stageInfo.xpBonus} XP & level up!
+                <Sparkles size={12} className="inline text-warning mr-1" />
+                Honest ratings help your garden grow faster!
               </p>
             </div>
           )}

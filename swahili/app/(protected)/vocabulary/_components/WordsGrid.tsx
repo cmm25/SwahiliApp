@@ -15,9 +15,10 @@ interface WordsGridProps {
   growthStages: Record<GrowthStage, StageInfo>;
   onToggleFavorite: (word: UserWord) => void;
   onPlayAudio: (text: string) => void;
+  onAdd?: (word: UserWord) => void;
 }
 
-export function WordsGrid({ words, growthStages, onToggleFavorite, onPlayAudio }: WordsGridProps) {
+export function WordsGrid({ words, growthStages, onToggleFavorite, onPlayAudio, onAdd }: WordsGridProps) {
   return (
     <section className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {words.map((word, index) => (
@@ -27,6 +28,7 @@ export function WordsGrid({ words, growthStages, onToggleFavorite, onPlayAudio }
           stageInfo={growthStages[word.growth_stage as GrowthStage] ?? growthStages.seed}
           onToggleFavorite={onToggleFavorite}
           onPlayAudio={onPlayAudio}
+          onAdd={onAdd}
           index={index}
         />
       ))}

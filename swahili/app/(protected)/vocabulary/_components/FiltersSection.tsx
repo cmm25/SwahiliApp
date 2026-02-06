@@ -10,6 +10,7 @@ interface FiltersSectionProps {
   showFavorites: boolean;
   showLearningOnly: boolean;
   showDueOnly: boolean;
+  searchQuery: string;
   wordsCount: number;
   userWordsCount: number;
   dueCount: number;
@@ -18,6 +19,7 @@ interface FiltersSectionProps {
   stageOptions: Array<{ value: GrowthStage; label: string }>;
   onCategoryChange: (value: string) => void;
   onStageChange: (value: GrowthStage | "all") => void;
+  onSearchChange: (value: string) => void;
   onToggleFavorites: () => void;
   onShowAllWords: () => void;
   onShowLearningOnly: () => void;
@@ -39,8 +41,10 @@ export function FiltersSection({
   filteredCount,
   baseCount,
   stageOptions,
+  searchQuery,
   onCategoryChange,
   onStageChange,
+  onSearchChange,
   onToggleFavorites,
   onShowAllWords,
   onShowLearningOnly,
@@ -51,6 +55,17 @@ export function FiltersSection({
     <section className="mb-6">
       <SketchCard className="border-border/40">
         <div className="flex flex-col gap-4">
+          {/* Search Input */}
+          <div className="w-full">
+            <input
+              type="text"
+              placeholder="Search words in Swahili or English..."
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="w-full rounded-xl border border-border/40 bg-card px-4 py-2 font-hand-secondary text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 placeholder:text-muted-foreground/60"
+            />
+          </div>
+
           <div className="flex flex-col lg:flex-row gap-3">
             <div className="min-w-[200px]">
               <label className="font-hand-secondary text-xs text-muted-foreground">Category</label>
