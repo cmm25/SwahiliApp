@@ -48,18 +48,39 @@ export function useProfile(): UseProfileReturn {
         .from("profiles")
         .select("*")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
       if (fetchError) {
-        // Profile might not exist yet (new user)
-        if (fetchError.code === "PGRST116") {
-          setProfile(null);
-        } else {
-          throw fetchError;
-        }
-      } else {
-        setProfile(data as Profile);
+        throw fetchError;
       }
+
+      if (!data) {
+        const fallbackName =
+          (user.user_metadata as { display_name?: string } | undefined)?.display_name
+          ?? user.email?.split("@")[0]
+          ?? null;
+
+        const { data: created, error: createError } = await getUntypedClient()
+          .from("profiles")
+          .upsert({
+            user_id: user.id,
+            display_name: fallbackName,
+            avatar: null,
+            onboarding_completed: false,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' })
+          .select("*")
+          .maybeSingle();
+
+        if (createError) {
+          throw createError;
+        }
+
+        setProfile(created ? (created as Profile) : null);
+        return;
+      }
+
+      setProfile(data as Profile);
     } catch (err) {
       setError(err as Error);
       console.error("Error fetching profile:", err);
