@@ -34,15 +34,29 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     }
 
     if (profileError) {
-      if (!didWarnRef.current) {
-        didWarnRef.current = true;
-        toast({
-          variant: "destructive",
-          title: "Session expired",
-          description: "Please log in again to continue.",
-        });
+      const message = (profileError as Error)?.message || "";
+      const isAuthRelated =
+        message.includes("JWT") ||
+        message.includes("token") ||
+        message.includes("unauthorized") ||
+        message.includes("Invalid API key");
+
+      if (isAuthRelated) {
+        if (!didWarnRef.current) {
+          didWarnRef.current = true;
+          toast({
+            variant: "destructive",
+            title: "Session expired",
+            description: "Please log in again to continue.",
+          });
+        }
+        router.replace("/auth");
+        return;
       }
-      router.replace("/auth");
+
+      if (pathname !== "/onboarding") {
+        router.replace("/onboarding");
+      }
       return;
     }
 
@@ -64,7 +78,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  if (!user || profileError) {
+  if (!user) {
     return null;
   }
   if (needsOnboarding && pathname !== "/onboarding") {
