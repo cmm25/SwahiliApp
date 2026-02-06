@@ -1,343 +1,170 @@
-# Learn Swahili with AI
+# RAFIKI (SWAHILIAPP)
 
-<div align="center">
+**Your language journey has roots. Grow them.**
 
-**An AI-powered Swahili language learning platform that makes mastering a new language feel like tending a garden.**
+RAFIKI is an AI-powered Swahili language learning platform where learners cultivate their vocabulary like a living garden. Moving beyond static flashcards, RAFIKI captures "learning context" - the cultural nuances, usage patterns, and personal progress that create fluency rather than just memorization.
 
-*Personal Growth & Learning Track — Comet Competition*
+## The Problem We're Solving
 
----
+The global market for language-learning apps is already in the double-digit billions, reflecting enormous demand for new language skills. However, these apps suffer from extremely poor long-term engagement: studies show that only about 2% of users remain active after 30 days, meaning the vast majority of learners drop out quickly. This suggests the current ecosystem is fundamentally broken:
 
-## 🌱 Project Vision
+**Gamification fatigue**
+Most apps rely on points, badges, leaderboards and streaks to drive engagement. Research indicates such extrinsic rewards can boost short-term motivation but fail to produce lasting learning commitment. Learners quickly tire of repetitive incentives, which may even induce stress or anxiety, without actually building true fluency.
 
-**Jifunze** (Swahili for "Learn") reimagines language acquisition as a **personal growth journey**. Instead of gamified competition and leaderboards, we focus on what actually matters: **consistent practice, meaningful reflection, and visible progress**.
+**Cultural disconnection**
+Vocabulary is often taught out of context (e.g., as isolated flashcards or drills), which undermines retention. Language experts emphasize that words tied to cultural experiences are much easier to remember and use correctly. Without grounding in culture, learners miss the rich social meaning of phrases and expressions.
 
-Our core philosophy: *Learning should feel like nurturing something alive.*
+**One-size-fits-all pacing**
+Many apps present a fixed curriculum and review schedule for everyone. In reality, each learner has unique memory patterns and needs. Proven methods like spaced repetition dramatically improve retention, but are often implemented in a static way (or ignored entirely) in popular apps, so users don’t get optimally timed reviews.
 
-The **Word Garden** metaphor transforms abstract vocabulary memorization into a visual, emotional experience. Each word you learn starts as a seed 🌰, sprouts into a sapling 🌱, and eventually blossoms into a tree 🌳 — creating a living representation of your growing knowledge.
+**African languages underserved**
+Most commercial apps focus on European or widely studied languages. In contrast, African languages (over 2,000 in number) have been largely bypassed by mainstream educational tech. Swahili alone is spoken by roughly 150–200 million people across East Africa and beyond, yet high-quality Swahili learning resources remain scarce.
 
----
+Traditional platforms tend to treat words like collectibles (“you get a new badge!”) rather than elements of living culture. In summary, the industry faces churn due to superficial engagement tactics and lack of personalization, and it has largely ignored contexts like African culture and language needs.
 
-## 🎯 Competition Track Alignment
+**RAFIKI fixes this**: You learn words → our AI provides rich cultural context and usage examples → spaced repetition schedules present reviews at optimal intervals → your Word Garden visualizes each word’s growth (from seed to tree) as you master it. This pipeline ensures learning is both meaningful and memorable.
 
-### Personal Growth & Learning
+## Why Multi-Agent AI Matters
 
-| Judging Criteria                     | How Jifunze Delivers                                                                                                                                      |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Functionality**              | Lesson units with vocabulary cards, practice steps, quizzes, streaks, and resuming progress; Word Garden SRS for review and mastery growth                |
-| **Real-world Relevance**       | Practical Swahili vocabulary across everyday categories with pronunciation playback and cultural context when available                                   |
-| **Use of LLMs/Agents**         | Dedicated agents for teaching/SRS, quiz generation, conversation tutoring, evaluator scoring, and daily article curation (see[Architecture](#-architecture)) |
-| **Evaluation & Observability** | Opik + Supabase trace logging for agent calls, evaluator scoring, admin trace dashboards, and structured metadata for analysis                            |
-| **Goal Alignment**             | Growth metaphors (Word Garden), consistent practice loops, and streak/XP incentives that make learning feel rewarding and achievable                      |
+Most language apps rely on static content or simple scripted chatbots. In RAFIKI, we deploy a team of specialized AI agents that work together, each solving a specific pedagogical challenge:
 
----
+| Agent                        | Role                                                      | Why It Matters                                                                                              |
+| :--------------------------- | :-------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------- |
+| **Teaching Agent**     | Provides pronunciation, cultural notes, example sentences | Every word gets rich, personalized context rather than a dry dictionary definition.                         |
+| **Quiz Agent**         | Generates adaptive quizzes and exercises                  | Questions adjust to each learner’s performance, keeping them challenged but not overwhelmed.               |
+| **Conversation Agent** | Engages the learner in natural dialogue practice          | Simulates real conversations instead of rote drills, improving confidence.                                  |
+| **Article Agent**      | Curates daily reading passages                            | Generates fresh, level-appropriate short articles to practice reading comprehension in real-world contexts. |
+| **Evaluator Agent**    | Acts as an AI “judge” for quality control               | Uses an LLM to score the clarity and cultural accuracy of content, ensuring high quality.                   |
 
-## ✨ Features
+Each agent has a clear role – this isn’t AI for its own sake. By modularizing these functions, RAFIKI overcomes limitations of one-size-fits-all systems. The Evaluator Agent reviews each interaction to maintain consistent teaching quality.
 
-### 🌸 The Word Garden (Bustani ya Maneno)
+## Tech Stack
 
-A visual vocabulary ecosystem powered by spaced repetition scheduling:
+**Frontend**
 
-- **5 Growth Stages**: Seed 🌰 → Sprout 🌱 → Sapling 🌿 → Flower 🌸 → Tree 🌳
-- **"Water Your Garden"**: Daily review sessions that trigger beautiful growth animations
-- **Intelligent Scheduling**: Words appear for review at scientifically optimal intervals
-- **Mastery Celebrations**: Sparkle bursts and float-up effects when words reach Tree stage
+- Next.js 16
+- Tailwind CSS
 
-```
-Growth Stage     Reviews Needed    XP Bonus
-──────────────────────────────────────────
-Seed      🌰        0              +5
-Sprout    🌱        1-2            +10
-Sapling   🌿        3-4            +15
-Flower    🌸        5-6            +20
-Tree      🌳        7+             +25
-```
+**Backend & Infrastructure**
 
-### 📚 Structured Lesson Journey
+- Supabase (PostgreSQL database + Auth + RLS)
+- Next.js API Routes for agent endpoints
 
-Each lesson follows a step-based flow:
+**AI & Observability**
 
-1. **Intro** — short welcome and context for the unit
-2. **Learn** — vocabulary cards with pronunciation playback
-3. **Practice** — interactive exercises (multiple choice, fill-in-blank, translation)
-4. **Quiz** — short assessment and XP reward
-5. **Celebration** — completion summary and streak updates
-
-Lesson units are defined in `swahili/lib/lesson-structure.ts` with Beginner and Intermediate tracks.
-
-### 🎮 Adaptive Quiz System
-
-- Dynamic question generation via the Quiz Agent
-- Multiple formats: Swahili→English, English→Swahili, multiple choice, fill-in-blank
-- Fuzzy answer matching for minor typos
-- Performance-based XP rewards
-
-### 🔥 Progress & Streaks
-
-- **500 XP per Level** with Swahili level titles (Mwanafunzi → Bingwa)
-- **Daily Streak Tracking** with fire animations
-- **Session Persistence**: Resume interrupted lessons exactly where you left off
-- **XP History Audit Trail**: Complete learning analytics
-
-### 💬 AI Conversation Practice
-
-Natural dialogue practice with an AI tutor that:
-
-- Adapts to your vocabulary level
-- Provides contextual corrections
-- Offers cultural insights during conversation
-- Tracks conversation history for continuity
-
----
-
-## 🤖 Architecture
-
-### Multi-Agent System
-
-Jifunze uses specialized agents exposed via Next.js API routes:
-
-```
-┌───────────────────────────────┐
-│          Frontend             │
-└───────────────┬───────────────┘
-                │
-┌───────────────▼───────────────┐
-│     Next.js API Routes        │
-└──────┬─────────┬─────────┬────┘
-       │         │         │
-┌──────▼───┐ ┌───▼────┐ ┌──▼────────┐
-│ Teaching │ │ Lesson │ │ Conversation │
-│  Agent   │ │ Agent  │ │    Agent     │
-└──────┬───┘ └───┬────┘ └──┬────────┘
-       │         │         │
-┌──────▼───┐ ┌───▼────┐ ┌──▼────────┐
-│  Quiz   │ │ Article │ │ Evaluator │
-│  Agent  │ │  Agent  │ │   Agent   │
-└──────┬───┘ └───┬────┘ └──┬────────┘
-       │         │         │
-       └─────────┴─────────▼───────┐
-                           TTS     │
-                        (ElevenLabs) 
-```
-
-### Model Routing Strategy
-
-Fast LLM calls use Groq (Llama 3.3 70B). The evaluator can also use Google GenAI (Gemini) when configured.
-
-### Database Schema (Key Tables)
-
-```sql
-profiles
-├── user_id, display_name, avatar
-└── onboarding_completed, created_at, updated_at
-
-vocabulary_words
-├── id, swahili, english, category
-└── created_at, stage
-
-user_vocabulary
-├── user_id, word_id, growth_stage
-└── ease_factor, interval_days, repetitions, next_review_at
-
-lesson_progress
-├── user_id, lesson_id
-└── completed, score, xp_earned, completed_at
-
-lesson_session_progress
-├── user_id, lesson_id
-└── current_phase, current_word_index, practice_score, quiz_session_id
-
-learning_progress
-├── user_id, xp, level
-└── streak_days, last_activity_date, updated_at
-
-agent_traces
-├── user_id, agent_name, input, output
-└── feedback_score, session_id, created_at
-```
-
----
-
-## 🔬 Evaluation & Observability
-
-### Agent Traces
-
-Every agent interaction is logged to Supabase and Opik:
-
-```typescript
-interface AgentTrace {
-  id: string;
-  user_id: string;
-  agent_name: 'teaching' | 'quiz' | 'conversation' | 'article' | 'evaluator';
-  input: string;
-  output: string;
-  latency_ms?: number;
-  feedback_score?: number;
-  created_at: timestamp;
-}
-```
-
-### LLM-as-Judge (Evaluator Agent)
-
-The Evaluator Agent performs quality control across all specialist agents:
-
-- **Teaching Clarity**: Are explanations understandable?
-- **Cultural Accuracy**: Are cultural notes authentic?
-- **Pedagogical Effectiveness**: Does the content teach well?
-- **Response Relevance**: Is the output on-topic?
-
-### Opik Integration
-
-- Trace logging for all agent calls (`lib/opik.ts`)
-- Admin dashboards for agent traces (`components/admin`)
-- Metadata tagging for model, latency, and evaluation results
-
----
-
-## 🛠 Tech Stack
-
-| Layer                        | Technology                                    |
-| ---------------------------- | --------------------------------------------- |
-| **Frontend**           | Next.js 16 (App Router), React 19, TypeScript |
-| **UI Components**      | shadcn/ui + Radix UI                          |
-| **Backend**            | Supabase (Postgres, Auth, RLS)                |
-| **LLM Infrastructure** | Groq (Llama 3.3), Google GenAI (optional)     |
-| **Observability**      | Opik + Supabase trace logging                 |
-| **Audio**              | ElevenLabs TTS                                |
-|                              |                                               |
-
-### Design System
-
-A unique **"Hand-drawn Swiss"** aesthetic that removes the cold, digital feel:
-
-- Warm cream backgrounds with terracotta accents
-- Wobbly, freehand borders (no sharp edges)
-- Sketch-style illustrations and icons
-- Fonts: Caveat (headings), Patrick Hand (body), DM Sans (UI)
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- npm or bun
-- Supabase account (for database/auth)
-- Groq API key (for LLM)
-- Opik API key (for tracing)
-- ElevenLabs API key (for TTS, optional)
-- Google GenAI API key (optional)
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/your-username/Swahili.git
-cd Swahili/swahili
-
-# Install dependencies
-npm install
-
-# Set up environment variables
-cp .env.example .env.local
-
-# Run the development server
-npm run dev
-```
-
-### Environment Variables
-
-```env
-GROQ_API_KEY=your_groq_api_key
-GOOGLE_API_KEY=your_google_genai_key
-ELEVENLABS_API_KEY=your_elevenlabs_key
-
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-
-OPIK_API_KEY=your_opik_api_key
-OPIK_WORKSPACE=your_opik_workspace
-OPIK_PROJECT_NAME=your_opik_project
-OPIK_URL_OVERRIDE=your_opik_url
-PUBLIC_TRACE_USER_ID=optional_fallback_user_id
-```
-
-### Database Setup
-
-Run the complete schema from `docs/COMPLETE_DATABASE_SETUP.md` in your Supabase SQL Editor.
-
----
+- Groq (Llama 3.3 70B) for high-speed inference
+- Google GenAI (Gemini) for evaluation (optional)
+- Opik for trace logging and observability
+- ElevenLabs for Text-to-Speech audio
 
 ## 📁 Project Structure
 
 ```
-Swahili/
-├── Readme.md
-└── swahili/
-    ├── app/                     # Next.js App Router
-    │   ├── (protected)/         # Auth-gated routes
-    │   ├── api/agents/           # Agent API routes
-    │   ├── auth/                 # Login/Signup
-    │   └── onboarding/           # Onboarding flow
-    ├── components/               # UI + feature components
-    ├── hooks/                    # Custom React hooks
-    ├── integrations/supabase/    # Supabase client + types
-    ├── lib/agents/               # Agent logic
-    ├── public/                   # Static assets
-    ├── package.json
-    └── next.config.ts
+swahili/
+├── app/                          # Next.js app router pages
+│   ├── (protected)/              # Authenticated routes
+│   │   ├── dashboard/            # Learner dashboard
+│   │   ├── lessons/              # Lesson journey flow
+│   │   ├── vocabulary/           # Word Garden interface
+│   │   └── conversation/         # AI tutor chat
+│   ├── api/agents/               # Agent API endpoints
+│   ├── auth/                     # Login/Signup pages
+│   └── onboarding/               # User onboarding flow
+│
+├── components/                   # React components
+│   ├── admin/                    # Admin trace dashboard
+│   ├── article/                  # Daily article feature
+│   ├── landingpage/              # Landing page UI
+│   ├── lesson/                   # Lesson phase components
+│   ├── shared/                   # Reusable UI (SketchCard, etc.)
+│   └── vocabulary/               # Word Garden visualizations
+│
+├── hooks/                        # Custom React hooks
+│   ├── useTeaching.ts            # Spaced repetition logic
+│   ├── useLesson.ts              # Lesson orchestration state
+│   └── useQuiz.ts                # Quiz generation & handling
+│
+├── lib/                          # Core business logic
+│   ├── agents/                   # Agent implementation files
+│   ├── agent-logger.ts           # Trace logging to Opik/Supabase
+│   └── llm.ts                    # LLM client abstraction
+│
+└── integrations/                 # External service clients
+    └── supabase/                 # Supabase client & types
 ```
 
----
+## Installation
 
-## 📊 Demo
+### Prerequisites
 
-### Lesson Flow
+- Node.js (v18+)
+- npm
+- Supabase account
+- Groq API key
+- Opik API key
 
-The lesson journey guides learners through structured acquisition:
+### Setup Steps
 
-**Step 1: Intro** → Welcome and lesson context
+1. **Clone the repository**
 
-**Step 2: Learn** → Vocabulary cards with pronunciation playback
+```bash
+git clone https://github.com/your-username/Swahili.git
+cd Swahili/swahili
+```
 
-**Step 3: Practice** → Interactive exercises with hints and immediate feedback
+2. **Install dependencies**
 
-**Step 4: Quiz** → Short assessment and XP reward
+```bash
+npm install
+```
 
-**Step 5: Celebration** → XP rewards, streak updates, and garden growth
+3. **Configure environment variables**
 
-### Word Garden
+```bash
+cp .env.example .env.local
+```
 
-Watch your vocabulary grow from seeds to trees as you master words through spaced repetition.
+Fill in all required environment variables (Supabase, Groq, Opik, ElevenLabs).
 
----
+4. **Set up Supabase database**
 
-## 🔮 Roadmap
+- Create a new Supabase project.
+- Run the provided SQL schema in your project's SQL editor.
 
-- [ ] Native Swahili voice (ElevenLabs TTS)
-- [ ] Grammar Agent for noun class explanations
-- [ ] Culture Agent for proverbs and regional variations
-- [ ] Offline mode with service worker
-- [ ] Mobile app (React Native)
+5. **Run development server**
 
----
+```bash
+npm run dev
+```
 
-## 🙏 Acknowledgments
+Open http://localhost:3000
 
-- **Swahili Community** for linguistic guidance
-- **Comet/Opik** for observability infrastructure
-- **Groq** for high-speed LLM inference
-- **Supabase** for backend infrastructure
+## 🌸 Word Garden Integration
 
----
+RAFIKI uses a custom implementation of the **SM-2 Spaced Repetition Algorithm** to manage vocabulary retention. This system ensures that words are reviewed at scientifically optimal intervals.
 
-<div align="center">
+**Growth Stages:**
 
-**Karibu! Welcome to your Swahili learning journey.**
+- **Seed** 🌰 (New)
+- **Sprout** 🌱 (Learning)
+- **Sapling** 🌿 (Reviewing)
+- **Flower** 🌸 (Known)
+- **Tree** 🌳 (Mastered)
 
-*Made with ❤️ for language learners*
+The visual state of the garden directly reflects the user's memory strength, providing immediate, intuitive feedback on learning progress.
 
+## 🔬 Multi-Agent Pipeline
 
-</div>
+RAFIKI orchestrates five specialized agents to deliver a comprehensive learning experience:
+
+1. **Teaching Agent** explains concepts and enhances vocabulary.
+2. **Quiz Agent** assesses understanding through adaptive tests.
+3. **Conversation Agent** facilitates natural dialogue practice.
+4. **Article Agent** generates level-appropriate reading materials.
+5. **Evaluator Agent** (LLM-as-a-Judge) scores interaction quality.
+
+All agent interactions are traced and logged via **Opik** for analysis and improvement.
+
+## Demo
+
+**Live Site:** https://swahili-app.vercel.app/
