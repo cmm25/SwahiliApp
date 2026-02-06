@@ -18,7 +18,7 @@ import { WordsGrid } from "./_components/WordsGrid";
 
 export default function Vocabulary() {
   const { streak, xp } = useStreak();
-  const { fetchVocabulary, fetchVocabularyCount, toggleFavorite, startPractice, reviewWord, filterDueWords } = useTeaching();
+  const { fetchVocabulary, fetchVocabularyCount, toggleFavorite, startPractice, reviewWord, quickReview, filterDueWords, addWordToLearning } = useTeaching();
   const quiz = useQuiz();
   const { speak: playPronunciation } = useTextToSpeech();
   const [words, setWords] = useState<UserWord[]>([]);
@@ -33,6 +33,7 @@ export default function Vocabulary() {
   const [practiceNotice, setPracticeNotice] = useState<string | null>(null);
   const [totalVocabulary, setTotalVocabulary] = useState(0);
 
+  const [searchQuery, setSearchQuery] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedStage, setSelectedStage] = useState<GrowthStage | "all">("all");
@@ -95,6 +96,13 @@ export default function Vocabulary() {
       if (showDueOnly && !dueWordIds.has(word.id)) {
         return false;
       }
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        return (
+          word.swahili.toLowerCase().includes(query) ||
+          word.english.toLowerCase().includes(query)
+        );
+      }
       return true;
     });
   }, [
@@ -103,6 +111,7 @@ export default function Vocabulary() {
     showFavorites,
     showLearningOnly,
     showDueOnly,
+    searchQuery,
     words,
     userWords,
     dueWordIds,
@@ -161,7 +170,7 @@ export default function Vocabulary() {
     setPracticeIntro(null);
   };
 
-  const handlePracticeAnswer = async (correct: boolean) => {
+  const handlePracticeAnswer = async (performance: 'perfect' | 'good' | 'struggled' | 'forgot') => {
     if (!currentPracticeWord || isProcessing) {
       return;
     }
@@ -175,8 +184,8 @@ export default function Vocabulary() {
     setReviewedWordIds(prev => new Set(prev).add(currentPracticeWord.id));
     
     try {
-      const performance = correct ? "perfect" : "forgot";
-      const response = await reviewWord(currentPracticeWord, performance);
+      // Use quickReview for faster feedback loop without LLM
+      const response = await quickReview(currentPracticeWord, performance);
   
       if (response.success) {
         const xpAmount = response.xpEarned ?? currentStageInfo.xpBonus;
@@ -209,6 +218,14 @@ export default function Vocabulary() {
       setIsProcessing(false);
       moveToNextWord();
     }
+  };
+
+  const handleAddWord = async (word: UserWord) => {
+    const updated = await addWordToLearning(word.id);
+    if (!updated) return;
+
+    setWords(prev => prev.map(w => (w.id === updated.id ? updated : w)));
+    setUserWords(prev => [...prev, updated]);
   };
 
   const handleToggleFavorite = async (word: UserWord) => {
@@ -315,6 +332,7 @@ export default function Vocabulary() {
           showFavorites={showFavorites}
           showLearningOnly={showLearningOnly}
           showDueOnly={showDueOnly}
+          searchQuery={searchQuery}
           wordsCount={words.length}
           userWordsCount={userWords.length}
           dueCount={wordsNeedingWater.length}
@@ -323,6 +341,7 @@ export default function Vocabulary() {
           stageOptions={stageOptions}
           onCategoryChange={setSelectedCategory}
           onStageChange={setSelectedStage}
+          onSearchChange={setSearchQuery}
           onToggleFavorites={() => setShowFavorites((prev) => !prev)}
           onShowAllWords={() => setShowLearningOnly(false)}
           onShowLearningOnly={() => setShowLearningOnly(true)}
@@ -333,15 +352,17 @@ export default function Vocabulary() {
             setShowFavorites(false);
             setShowLearningOnly(false);
             setShowDueOnly(false);
+            setSearchQuery("");
           }}
         />
 
-      <WordsGrid
-        words={filteredWords}
-        growthStages={growthStages}
-        onToggleFavorite={handleToggleFavorite}
-        onPlayAudio={playPronunciation}
-      />
-    </>
-  );
-}
+        <WordsGrid
+          words={filteredWords}
+          growthStages={growthStages}
+          onToggleFavorite={handleToggleFavorite}
+          onPlayAudio={playPronunciation}
+          onAdd={handleAddWord}
+        />
+      </>
+    );
+  }
