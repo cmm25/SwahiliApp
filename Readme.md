@@ -33,7 +33,7 @@ Most language apps rely on static content or simple scripted chatbots. In RAFIKI
 | **Teaching Agent**     | Provides pronunciation, cultural notes, example sentences | Every word gets rich, personalized context rather than a dry dictionary definition.                         |
 | **Quiz Agent**         | Generates adaptive quizzes and exercises                  | Questions adjust to each learner’s performance, keeping them challenged but not overwhelmed.               |
 | **Conversation Agent** | Engages the learner in natural dialogue practice          | Simulates real conversations instead of rote drills, improving confidence.                                  |
-| **Article Agent**      | Curates daily reading passages                            | Generates fresh, level-appropriate short articles to practice reading comprehension in real-world contexts. |
+| **Article Agent**      | Curates daily reading passages                            | Generates fresh daily, level-appropriate short articlesand videos to learn more about the swahili way of life. |
 | **Evaluator Agent**    | Acts as an AI “judge” for quality control               | Uses an LLM to score the clarity and cultural accuracy of content, ensuring high quality.                   |
 
 Each agent has a clear role – this isn’t AI for its own sake. By modularizing these functions, RAFIKI overcomes limitations of one-size-fits-all systems. The Evaluator Agent reviews each interaction to maintain consistent teaching quality.
@@ -160,7 +160,7 @@ RAFIKI orchestrates five specialized agents to deliver a comprehensive learning 
 1. **Teaching Agent** explains concepts and enhances vocabulary.
 2. **Quiz Agent** assesses understanding through adaptive tests.
 3. **Conversation Agent** facilitates natural dialogue practice.
-4. **Article Agent** generates level-appropriate reading materials.
+4. **Article Agent** generates level-appropriate reading materials and cultural content from blogs to youtube videos on a daily basis ( new day new content)
 5. **Evaluator Agent** (LLM-as-a-Judge) scores interaction quality.
 
 All agent interactions are traced and logged via **Opik** for analysis and improvement.
