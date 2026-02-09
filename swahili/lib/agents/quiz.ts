@@ -1,4 +1,5 @@
 import { logAgentTrace } from '../agent-logger';
+import { TEMPLATES, SYSTEM_PROMPTS, formatPrompt } from '@/lib/prompts';
 
 // ============================================================================
 // TYPES
@@ -158,19 +159,6 @@ async function callGroq(
 // QUIZ GENERATION
 // ============================================================================
 
-const QUIZ_SYSTEM_PROMPT = `You are a Swahili language quiz generator for Rafiki learning platform.
- 
- Your task is to generate quiz questions that test vocabulary knowledge.
- 
- Rules:
- 1. Questions must be clear and unambiguous
- 2. Multiple choice options should be plausible but distinct
- 3. Include helpful hints when requested
- 4. Vary question types for engagement
- 5. Ensure correct answers are accurate
- 
- Always respond with valid JSON matching the requested schema.`;
-
 /**
  * Generate a unique quiz for the user based on lesson vocabulary
  */
@@ -224,7 +212,16 @@ export async function generateQuiz(request: GenerateQuizRequest): Promise<QuizRe
       output: JSON.stringify({ questionCount: questions.length }),
       latencyMs: Date.now() - startTime,
       success: true,
-      metadata: { action: 'generate', lessonId: request.lessonId, quizLevel: request.lessonId },
+      metadata: { 
+        action: 'generate', 
+        lessonId: request.lessonId, 
+        quizLevel: request.lessonId,
+        success: true,
+        // Enhanced Analytics Metadata
+        learning_type: 'quiz_generation',
+        quiz_config: config,
+        word_count: request.words.length
+      },
     });
 
     return {
@@ -315,11 +312,27 @@ async function generateSingleQuestion(
     .sort(() => Math.random() - 0.5)
     .slice(0, 3);
 
-  const prompt = buildQuestionPrompt(word, type, distractors, includeHint);
+  const template = TEMPLATES.GENERATE_QUESTION;
+  const typeInstructions: Record<QuestionType, string> = {
+    swahili_to_english: `Create a question asking "What does '${word.swahili}' mean in English?"`,
+    english_to_swahili: `Create a question asking "How do you say '${word.english}' in Swahili?"`,
+    fill_blank: `Create a fill-in-the-blank sentence using the Swahili word '${word.swahili}'`,
+    multiple_choice: `Create a multiple choice question with 4 options where the correct answer is '${word.english}' or '${word.swahili}'`,
+  };
+
+  const prompt = formatPrompt(template.prompt, {
+    swahili: word.swahili,
+    english: word.english,
+    category: word.category || 'general',
+    distractors: distractors.map(d => `- ${d.swahili} = ${d.english}`).join('\n'),
+    type: type,
+    typeInstructions: typeInstructions[type],
+    hintInstruction: includeHint ? 'Include a helpful hint.' : 'No hint needed.'
+  });
 
   try {
     const response = await callGroq([
-      { role: 'system', content: QUIZ_SYSTEM_PROMPT },
+      { role: 'system', content: SYSTEM_PROMPTS.QUIZ.prompt },
       { role: 'user', content: prompt },
     ], { temperature: 0.8, maxTokens: 500 });
 
@@ -329,48 +342,6 @@ async function generateSingleQuestion(
     // Fallback to simple question if AI fails
     return createFallbackQuestion(word, type, distractors, questionNumber);
   }
-}
-
-/**
- * Build prompt for question generation
- */
-function buildQuestionPrompt(
-  word: VocabWord,
-  type: QuestionType,
-  distractors: VocabWord[],
-  includeHint: boolean
-): string {
-  const baseInfo = `
- Target Word:
- - Swahili: ${word.swahili}
- - English: ${word.english}
- - Category: ${word.category || 'general'}
- 
- Distractor Words (for multiple choice):
- ${distractors.map(d => `- ${d.swahili} = ${d.english}`).join('\n')}
- `;
-
-  const typeInstructions: Record<QuestionType, string> = {
-    swahili_to_english: `Create a question asking "What does '${word.swahili}' mean in English?"`,
-    english_to_swahili: `Create a question asking "How do you say '${word.english}' in Swahili?"`,
-    fill_blank: `Create a fill-in-the-blank sentence using the Swahili word '${word.swahili}'`,
-    multiple_choice: `Create a multiple choice question with 4 options where the correct answer is '${word.english}' or '${word.swahili}'`,
-  };
-
-  return `${baseInfo}
- 
- Question Type: ${type}
- ${typeInstructions[type]}
- 
- ${includeHint ? 'Include a helpful hint.' : 'No hint needed.'}
- 
- Respond with JSON:
- {
-   "prompt": "The question text",
-   "correctAnswer": "The correct answer",
-   "options": ["option1", "option2", "option3", "option4"], // only for multiple_choice
-   "hint": "A helpful hint" // if requested
- }`;
 }
 
 /**
@@ -486,14 +457,31 @@ export async function gradeQuiz(request: GradeQuizRequest): Promise<QuizResult> 
       completedAt: new Date(),
     };
 
+    const template = TEMPLATES.QUIZ_FEEDBACK;
+
     await logAgentTrace({
       userId: request.userId,
       agentName: 'quiz',
       input: JSON.stringify({ lessonId: session.lessonId, answers: session.answers.length }),
-      output: JSON.stringify({ score: correctAnswers, xpEarned, percentage }),
+      output: JSON.stringify({ score: correctAnswers, xpEarned, percentage, feedback }),
       latencyMs: Date.now() - startTime,
       success: true,
-      metadata: { action: 'grade', score: correctAnswers, percentage, lessonId: session.lessonId, quizLevel: session.lessonId },
+      metadata: { 
+        action: 'grade', 
+        score: correctAnswers, 
+        percentage, 
+        lessonId: session.lessonId, 
+        quizLevel: session.lessonId,
+        success: true,
+        // Enhanced Analytics Metadata
+        learning_type: 'quiz_feedback',
+        prompt_name: template.name,
+        prompt_version: template.version,
+        feedback_tone: percentage >= 70 ? 'encouraging' : 'gentle_support',
+        garden_metaphor_used: feedback.toLowerCase().includes('grow') || 
+                             feedback.toLowerCase().includes('bloom') ||
+                             feedback.toLowerCase().includes('seed')
+      },
     });
 
     return {
@@ -586,12 +574,13 @@ async function generateFeedback(
     })
     .filter(Boolean);
 
-  const prompt = `Generate brief, encouraging feedback (2-3 sentences) for a Swahili quiz result:
- 
- Score: ${correctCount}/${session.totalQuestions} (${percentage.toFixed(0)}%)
- ${wrongAnswers.length > 0 ? `Words to review: ${wrongAnswers.join(', ')}` : 'Perfect score!'}
- 
- Use garden/growth metaphors. Be warm and encouraging. If they struggled, be gentle but motivating.`;
+  const template = TEMPLATES.QUIZ_FEEDBACK;
+  const prompt = formatPrompt(template.prompt, {
+    score: correctCount,
+    total: session.totalQuestions,
+    percentage: percentage.toFixed(0),
+    reviewInfo: wrongAnswers.length > 0 ? `Words to review: ${wrongAnswers.join(', ')}` : 'Perfect score!'
+  });
 
   try {
     const response = await callGroq([

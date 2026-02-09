@@ -1,15 +1,12 @@
 'use client';
 
-/**
- * AdminDashboard - Platform statistics for admins
- */
+
 
 import { useEffect } from 'react';
 import { 
   Users, 
   Activity, 
   Cpu, 
-  BookOpen, 
   MessageSquare,
   Star,
   TrendingUp,
@@ -127,6 +124,35 @@ export function AdminDashboard() {
           valueClassName="text-success"
         />
       </div>
+
+      {/* Analytics API Row */}
+      {stats.opikAnalytics && (
+        <div className="grid md:grid-cols-2 gap-6">
+          <SketchCard>
+            <h4 className="font-hand text-lg mb-4">Opik Analytics (API Proxy)</h4>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="font-hand-secondary text-sm">Teaching Success</span>
+                <span className="font-hand text-lg text-success">
+                  {stats.opikAnalytics.performance.teaching_success}%
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-hand-secondary text-sm">Avg Quiz Score</span>
+                <span className="font-hand text-lg text-success">
+                  {stats.opikAnalytics.performance.quiz_average}%
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-hand-secondary text-sm">Conversation Turns</span>
+                <span className="font-hand text-lg text-primary">
+                  {stats.opikAnalytics.performance.conversation_turns}
+                </span>
+              </div>
+            </div>
+          </SketchCard>
+        </div>
+      )}
 
       {/* Charts Row */}
       <div className="grid md:grid-cols-2 gap-6">
