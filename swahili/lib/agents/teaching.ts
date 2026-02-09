@@ -1,5 +1,6 @@
 import { callLLM } from '@/lib/llm';
 import { logTrace } from '@/lib/opik';
+import { TEMPLATES, SYSTEM_PROMPTS, formatPrompt } from '@/lib/prompts';
 import {
   calculateNextReviewDate,
   calculateNextStage,
@@ -9,31 +10,6 @@ import {
   TeachingResponse,
   normalizeGrowthStage,
 } from './teaching-shared';
-
-const TEACHING_SYSTEM_PROMPT = `You are Mwalimu (Teacher), the Teaching Agent for Rafiki - a Swahili learning platform.
-
-Your role is to introduce new vocabulary words and guide learners through the spaced repetition process.
-
-When introducing a new word:
-1. Present the Swahili word clearly
-2. Provide the English translation
-3. Give a phonetic pronunciation guide
-4. Share a memorable example sentence in both languages
-5. Include a cultural context or memory tip when relevant
-
-When reviewing words:
-1. Celebrate progress ("Your word is growing from a sprout to a sapling!")
-2. Provide gentle corrections with encouragement
-3. Suggest mnemonics for difficult words
-4. Connect words to previously learned vocabulary
-
-Personality:
-- Warm and encouraging like a supportive teacher
-- Use garden metaphors (seeds growing, flowers blooming)
-- Celebrate small wins enthusiastically
-- Never make learners feel bad about mistakes
-
-Always respond in a structured format that can be parsed.`;
 
 export async function teach(request: TeachingRequest): Promise<TeachingResponse> {
   const startTime = Date.now();
@@ -65,15 +41,15 @@ export async function teach(request: TeachingRequest): Promise<TeachingResponse>
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-  await logTrace({
-    userId: request.userId,
-    agentName: 'teaching-agent',
+    await logTrace({
+      userId: request.userId,
+      agentName: 'teaching-agent',
       input: JSON.stringify(request),
       output: JSON.stringify({ error: errorMessage }),
-    sessionId: request.sessionId,
+      sessionId: request.sessionId,
       latencyMs: Date.now() - startTime,
-    metadata: { action: request.action, error: true },
-    tags: ['teaching', 'error', request.action],
+      metadata: { action: request.action, error: true },
+      tags: ['teaching', 'error', request.action],
     });
 
     return {
@@ -96,21 +72,13 @@ async function introduceWord(request: TeachingRequest): Promise<TeachingResponse
     };
   }
 
-  const prompt = `Introduce this Swahili word to a beginner learner:
+  const template = TEMPLATES.INTRODUCE_WORD;
+  const prompt = formatPrompt(template.prompt, {
+    swahili: word.swahili,
+    english: word.english
+  });
 
-Swahili: ${word.swahili}
-English: ${word.english}
-
-Please provide:
-1. A warm greeting and introduction of the word
-2. Phonetic pronunciation (using English sounds)
-3. An example sentence in Swahili with English translation
-4. A memory tip or cultural context
-5. Encouragement to practice
-
-Keep it concise but engaging. Use the garden metaphor - this is a new seed being planted!`;
-
-  const responseText = await callLLM(TEACHING_SYSTEM_PROMPT, prompt, {
+  const responseText = await callLLM(SYSTEM_PROMPTS.TEACHING.prompt, prompt, {
     provider: 'groq',
     model: 'llama-3.3-70b-versatile',
     temperature: 0.7,
@@ -129,7 +97,24 @@ Keep it concise but engaging. Use the garden metaphor - this is a new seed being
     output: responseText,
     sessionId: request.sessionId,
     latencyMs,
-    metadata: { action: 'introduce', wordId: word.id },
+    metadata: {
+      action: 'introduce',
+      wordId: word.id,
+      prompt_name: template.name,
+      prompt_version: template.version,
+      success: true,
+      // Enhanced Analytics Metadata
+      learning_type: 'vocabulary_introduction',
+      word_introduced: word.swahili,
+      word_length: word.swahili.length,
+      cultural_context_included: responseText.toLowerCase().includes('culture') || 
+                                 responseText.toLowerCase().includes('context') ||
+                                 responseText.toLowerCase().includes('east africa'),
+      garden_metaphor_used: responseText.toLowerCase().includes('seed') || 
+                            responseText.toLowerCase().includes('plant') ||
+                            responseText.toLowerCase().includes('grow'),
+      response_contains_pronunciation: responseText.includes('(') && responseText.includes(')')
+    },
     tags: ['teaching', 'introduce'],
   });
 
@@ -164,23 +149,27 @@ async function reviewWord(request: TeachingRequest): Promise<TeachingResponse> {
   const isProgression =
     STAGE_PROGRESSION.indexOf(nextStage) > STAGE_PROGRESSION.indexOf(currentStage);
 
-  const prompt = `The learner just practiced this word:
+  const stageChangeInfo = stageChange
+    ? `New Stage: ${nextStage} (${isProgression ? 'GROWTH!' : 'needs more practice'})`
+    : 'Stage: unchanged';
 
-Swahili: ${word.swahili}
-English: ${word.english}
-Performance: ${performance}
-Current Stage: ${currentStage}
-${stageChange ? `New Stage: ${nextStage} (${isProgression ? 'GROWTH!' : 'needs more practice'})` : 'Stage: unchanged'}
+  const feedbackGuidance = isProgression
+    ? 'Celebrate their growth! Use garden metaphors (seed→sprout→sapling→flower→tree).'
+    : performance === 'forgot'
+      ? 'Be gentle and encouraging - remind them that all gardens need time.'
+      : 'Acknowledge their effort and encourage continued practice.';
 
-Provide brief, encouraging feedback (2-3 sentences). ${
-    isProgression
-      ? 'Celebrate their growth! Use garden metaphors (seed→sprout→sapling→flower→tree).'
-      : performance === 'forgot'
-        ? 'Be gentle and encouraging - remind them that all gardens need time.'
-        : 'Acknowledge their effort and encourage continued practice.'
-  }`;
+  const template = TEMPLATES.REVIEW_WORD;
+  const prompt = formatPrompt(template.prompt, {
+    swahili: word.swahili,
+    english: word.english,
+    performance: performance,
+    currentStage: currentStage,
+    stageChangeInfo: stageChangeInfo,
+    feedbackGuidance: feedbackGuidance
+  });
 
-  const responseText = await callLLM(TEACHING_SYSTEM_PROMPT, prompt, {
+  const responseText = await callLLM(SYSTEM_PROMPTS.TEACHING.prompt, prompt, {
     provider: 'groq',
     model: 'llama-3.3-70b-versatile',
     temperature: 0.7,
@@ -204,6 +193,19 @@ Provide brief, encouraging feedback (2-3 sentences). ${
       wordId: word.id,
       performance,
       stageChange: stageChange ? `${currentStage} → ${nextStage}` : 'none',
+      prompt_name: template.name,
+      prompt_version: template.version,
+      success: true,
+      // Enhanced Analytics Metadata
+      learning_type: 'spaced_repetition_review',
+      word_reviewed: word.swahili,
+      performance_outcome: performance,
+      spaced_repetition_stage: currentStage,
+      garden_metaphor_used: responseText.toLowerCase().includes('grow') || 
+                            responseText.toLowerCase().includes('bloom') ||
+                            responseText.toLowerCase().includes('water') ||
+                            responseText.toLowerCase().includes('sapling'),
+      feedback_tone: performance === 'perfect' || performance === 'good' ? 'celebratory' : 'encouraging'
     },
     tags: ['teaching', 'review', performance],
   });
@@ -249,18 +251,13 @@ async function practiceSession(request: TeachingRequest): Promise<TeachingRespon
     .map(w => `- ${w.swahili} (${w.english}) [${w.growth_stage}]`)
     .join('\n');
 
-  const prompt = `Start a practice session with these ${dueWords.length} words:
+  const template = TEMPLATES.PRACTICE_SESSION;
+  const prompt = formatPrompt(template.prompt, {
+    count: dueWords.length,
+    wordList: wordList
+  });
 
-${wordList}
-
-Create a brief, encouraging intro (2-3 sentences) that:
-1. Welcomes them to practice
-2. Mentions how many words they'll review
-3. Uses garden metaphor for motivation
-
-Don't include the actual practice questions - just the intro.`;
-
-  const responseText = await callLLM(TEACHING_SYSTEM_PROMPT, prompt, {
+  const responseText = await callLLM(SYSTEM_PROMPTS.TEACHING.prompt, prompt, {
     provider: 'groq',
     model: 'llama-3.3-70b-versatile',
     temperature: 0.7,
@@ -279,7 +276,18 @@ Don't include the actual practice questions - just the intro.`;
     output: responseText,
     sessionId: request.sessionId,
     latencyMs,
-    metadata: { action: 'practice', wordCount: dueWords.length },
+    metadata: {
+      action: 'practice',
+      wordCount: dueWords.length,
+      prompt_name: template.name,
+      prompt_version: template.version,
+      success: true,
+      // Enhanced Analytics Metadata
+      learning_type: 'practice_session_start',
+      word_count: dueWords.length,
+      garden_metaphor_used: responseText.toLowerCase().includes('garden') || 
+                            responseText.toLowerCase().includes('grow')
+    },
     tags: ['teaching', 'practice'],
   });
 

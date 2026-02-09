@@ -43,30 +43,36 @@ const OPIK_CONFIG = {
     apiKey: process.env.OPIK_API_KEY!,
     workspaceName: process.env.OPIK_WORKSPACE!,
     projectName: process.env.OPIK_PROJECT_NAME!,
-    apiUrl: process.env.OPIK_URL_OVERRIDE!,
+    apiUrl: process.env.OPIK_URL_OVERRIDE || 'https://www.comet.com/opik/api',
 };
 
 // Function to create a fresh Opik client
 export function createOpikClient() {
-    const authHeader = `Bearer ${OPIK_CONFIG.apiKey}`;
+    const authHeader = `${OPIK_CONFIG.apiKey}`;
     const headers = {
-        Authorization: authHeader,
+        'Authorization': authHeader, 
         'X-API-KEY': OPIK_CONFIG.apiKey,
+        'Comet-Workspace': OPIK_CONFIG.workspaceName
     };
+    
+    // Explicitly configure axios/fetch options to ensure headers are sent
     const config = {
         ...OPIK_CONFIG,
         headers,
+        // Opik SDK specific options
         requestOptions: {
             headers,
         },
+        // Underlying fetch options
         fetchOptions: {
             headers,
         },
     };
 
     console.log('🔍 Creating Opik client with config:', {
-        ...OPIK_CONFIG,
-        apiKey: `${OPIK_CONFIG.apiKey.substring(0, 8)}...`
+        workspaceName: OPIK_CONFIG.workspaceName,
+        projectName: OPIK_CONFIG.projectName,
+        apiKeyPrefix: OPIK_CONFIG.apiKey ? `${OPIK_CONFIG.apiKey.substring(0, 8)}...` : 'MISSING'
     });
     
     return new Opik(config);

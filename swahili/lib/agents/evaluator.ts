@@ -1,30 +1,20 @@
 import { callLLM } from '@/lib/llm';
 import { logTrace } from '@/lib/opik';
-
-const EVALUATOR_SYSTEM_PROMPT = `
-You are an expert Swahili language evaluator. Your job is to grade the quality of AI tutor responses.
-Score the response from 0.0 to 1.0 based on:
-1. Accuracy (Grammar/Vocabulary)
-2. Cultural Relevance
-3. Pedagogical Value (Clear explanation)
-
-Return ONLY a JSON object: { "score": number, "reason": "string" }
-`;
+import { TEMPLATES, SYSTEM_PROMPTS, formatPrompt } from '@/lib/prompts';
 
 export async function evaluateResponse(
     input: string,
     output: string,
     context?: string
 ) {
-    const userPrompt = `
-  Context: ${context || 'General conversation'}
-  User Input: "${input}"
-  AI Response: "${output}"
-  
-  Evaluate the AI response.
-  `;
+    const template = TEMPLATES.EVALUATE_RESPONSE;
+    const userPrompt = formatPrompt(template.prompt, {
+        context: context || 'General conversation',
+        input: input,
+        output: output
+    });
 
-    const response = await callLLM(EVALUATOR_SYSTEM_PROMPT, userPrompt);
+    const response = await callLLM(SYSTEM_PROMPTS.EVALUATOR.prompt, userPrompt);
 
     if (!response) return null;
 
@@ -36,7 +26,11 @@ export async function evaluateResponse(
             agentName: 'evaluator',
             input: `Eval request for: ${input.substring(0, 20)}...`,
             output: JSON.stringify(result),
-            metadata: { evaluated_output: output },
+            metadata: {
+                evaluated_output: output,
+                prompt_name: template.name,
+                prompt_version: template.version
+            },
         });
 
         return result;

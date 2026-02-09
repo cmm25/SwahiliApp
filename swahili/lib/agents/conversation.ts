@@ -1,21 +1,7 @@
 import { callLLM } from '@/lib/llm';
 import { logTrace, logDelayedFeedback } from '@/lib/opik';
 import { evaluateResponse } from './evaluator';
-
-const RAFIKI_SYSTEM_PROMPT = `
-You are Rafiki, a friendly and patient Swahili tutor.
-Your goal is to help the user learn Swahili through conversation.
-
-Guidelines:
-1.  **Language**: Reply mostly in Swahili, but provide English translations for difficult phrases in parentheses.
-2.  **Correction**: If the user makes a mistake, gently correct them, but keep the conversation flowing.
-3.  **Cultural Notes**: Occasionally add a brief fun fact about Swahili culture or East Africa if relevant.
-4.  **Tone**: Encouraging, warm, like a helpful friend.
-5.  **Length**: Keep responses concise (under 3 sentences) to encourage back-and-forth.
-
-Current User Level: Beginner/Intermediate
-Topic: General Conversation
-`;
+import { TEMPLATES, SYSTEM_PROMPTS, formatPrompt } from '@/lib/prompts';
 
 export interface ChatMessage {
     role: 'user' | 'assistant';
@@ -31,18 +17,17 @@ export async function chatWithRafiki(
     // Construct the conversation history for the LLM
     // We keep the last 10 turns to maintain context without exceeding tokens
     const recentHistory = history.slice(-10);
+    const historyText = recentHistory.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
 
-    const conversationPrompt = `
-  Conversation History:
-  ${recentHistory.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n')}
-  
-  User: "${message}"
-  Rafiki:
-  `;
+    const template = TEMPLATES.CONVERSATION_TURN;
+    const conversationPrompt = formatPrompt(template.prompt, {
+        history: historyText,
+        message: message
+    });
 
     // 1. Call LLM
     const startTime = Date.now();
-    const response = await callLLM(RAFIKI_SYSTEM_PROMPT, conversationPrompt);
+    const response = await callLLM(SYSTEM_PROMPTS.CONVERSATION.prompt, conversationPrompt);
     const latency = Date.now() - startTime;
 
     if (!response) {
@@ -60,7 +45,18 @@ export async function chatWithRafiki(
             historyLength: history.length,
             latencyMs: latency,
             topic: 'general',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            prompt_name: template.name,
+            prompt_version: template.version,
+            success: true,
+            // Enhanced Analytics Metadata
+            learning_type: 'conversation_practice',
+            message_length: message.length,
+            conversation_turn: history.length + 1,
+            swahili_used: containsSwahili(response),
+            english_translation_provided: response.includes('(') && response.includes(')'),
+            cultural_note_included: response.toLowerCase().includes('culture') || 
+                                   response.toLowerCase().includes('east africa')
         },
         tags: ['conversation']
     });
@@ -121,6 +117,12 @@ export async function chatWithRafiki(
     return response;
 }
 
+// Helper function to check for Swahili words
+function containsSwahili(text: string): boolean {
+    const swahiliWords = ['jambo', 'asante', 'habari', 'nzuri', 'karibu', 'pole', 'hujambo'];
+    return swahiliWords.some(word => text.toLowerCase().includes(word));
+}
+
 // Helper function to get user ID from request context if available
 export function extractUserId(request?: { user?: { id?: string } }): string | undefined {
     // Add your user ID extraction logic here
@@ -141,18 +143,17 @@ export async function chatWithRafikiEnhanced(
 ) {
     try {
         const recentHistory = history.slice(-10);
+        const historyText = recentHistory.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
 
-        const conversationPrompt = `
-      Conversation History:
-      ${recentHistory.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n')}
-      
-      User: "${message}"
-      Rafiki:
-      `;
+        const template = TEMPLATES.CONVERSATION_TURN;
+        const conversationPrompt = formatPrompt(template.prompt, {
+            history: historyText,
+            message: message
+        });
 
         // 1. Call LLM with timing
         const startTime = Date.now();
-        const response = await callLLM(RAFIKI_SYSTEM_PROMPT, conversationPrompt);
+        const response = await callLLM(SYSTEM_PROMPTS.CONVERSATION.prompt, conversationPrompt);
         const latency = Date.now() - startTime;
 
         if (!response) {
@@ -172,6 +173,16 @@ export async function chatWithRafikiEnhanced(
                 topic: 'general',
                 timestamp: new Date().toISOString(),
                 version: '1.0',
+                prompt_name: template.name,
+                prompt_version: template.version,
+                // Enhanced Analytics Metadata
+                learning_type: 'conversation_practice',
+                message_length: message.length,
+                conversation_turn: history.length + 1,
+                swahili_used: containsSwahili(response),
+                english_translation_provided: response.includes('(') && response.includes(')'),
+                cultural_note_included: response.toLowerCase().includes('culture') || 
+                                       response.toLowerCase().includes('east africa'),
                 ...options?.customMetadata
             },
             tags: ['conversation']

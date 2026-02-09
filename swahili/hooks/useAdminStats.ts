@@ -57,6 +57,20 @@ export interface AdminStats {
   feedbackStats: FeedbackStats | null;
   sessionStats: SessionStats | null;
   traceBreakdown: TraceBreakdown[] | null;
+  opikAnalytics: OpikAnalytics | null;
+}
+
+export interface OpikAnalytics {
+  timestamp: string;
+  overview: {
+    total_interactions: number;
+    breakdown: Record<string, number>;
+  };
+  performance: {
+    teaching_success: number;
+    quiz_average: number;
+    conversation_turns: number;
+  };
 }
 
 interface AdminStatsState {
@@ -80,6 +94,7 @@ export function useAdminStats(): AdminStatsState {
     feedbackStats: null,
     sessionStats: null,
     traceBreakdown: null,
+    opikAnalytics: null,
   });
 
   const fetchStats = useCallback(async () => {
@@ -113,6 +128,7 @@ export function useAdminStats(): AdminStatsState {
         feedbackStats,
         sessionStats,
         traceBreakdown,
+        opikAnalytics
       ] = await Promise.all([
         rpc<number>('admin_get_user_count'),
         rpc<number>('admin_get_active_users', { days_ago: 7 }),
@@ -129,6 +145,8 @@ export function useAdminStats(): AdminStatsState {
         rpc<FeedbackStats>('admin_get_feedback_stats'),
         rpc<SessionStats>('admin_get_session_stats'),
         rpc<TraceBreakdown[]>('admin_get_trace_breakdown', { days_back: 7 }),
+        // Fetch from internal proxy API gracefully
+        fetch('/api/admin/analytics').then(res => res.ok ? res.json() : null).catch(() => null) as Promise<OpikAnalytics | null>
       ]);
 
       setStats({
@@ -141,6 +159,7 @@ export function useAdminStats(): AdminStatsState {
         feedbackStats,
         sessionStats,
         traceBreakdown,
+        opikAnalytics,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch admin stats';
