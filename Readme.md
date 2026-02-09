@@ -262,3 +262,39 @@ All agents utilize a shared logger (`logTrace` in `/lib/opik.ts`) to send detail
 * **Latency**: How long each step took.
 * **Metadata**: Specific context like `wordId`, `lessonId`, or `growthStage`.
 * **Tags**: Labels like `teaching`, `quiz`, or `error` for easy filtering in the Opik dashboard.
+
+## ✅ Live Opik Integration (Current State)
+
+The current deployment is actively integrated with Opik and using three key capabilities in production:
+
+### 1) Project-Level Trace Observability
+
+In the Opik **Projects** view (`swahili` project), RAFIKI logs full trace rows for agent executions (for example `article-agent`, `conversation-rafiki`, and quiz traces). This gives the team an operational timeline of agent behavior with searchable inputs/outputs and timestamps.
+
+![Opik Project Traces](image/OPIK_DASHBOARD_SETUP/1770669774323.png)
+
+### 2) Delayed Feedback / Evaluation Traces
+
+RAFIKI logs evaluator outputs as separate delayed feedback traces (for example `conversation-rafiki_feedback`). These traces include:
+
+* evaluation score values
+* feedback type (`delayed`)
+* original trace linkage (`originalTraceId`)
+* session/user correlation fields
+
+This preserves both the original conversation trace and the asynchronous quality assessment, enabling quality monitoring without increasing chat latency for learners.
+
+![Opik Delayed Feedback Trace](image/OPIK_DASHBOARD_SETUP/1770669813887.png)
+
+### 3) Prompt Library Management
+
+RAFIKI prompts are now materialized in Opik **Prompt Library** (system prompts + task templates). The library supports:
+
+* centrally managed prompt text
+* version metadata (for example `1.0.0`)
+* tagging for filtering by agent/task type
+* prompt-level inspection in the Opik UI
+
+This aligns prompt engineering with observability so prompt changes can be audited against downstream trace behavior and feedback outcomes.
+
+![Opik Prompt Library Entry](image/OPIK_DASHBOARD_SETUP/1770669875033.png)
