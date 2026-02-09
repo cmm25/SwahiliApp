@@ -23,7 +23,7 @@ export function WordsGrid({ words, growthStages, onToggleFavorite, onPlayAudio, 
     <section className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {words.map((word, index) => (
         <WordCard
-          key={word.id}
+          key={`${word.id}-${word.userVocabId ?? word.next_review_at ?? index}`}
           word={word}
           stageInfo={growthStages[word.growth_stage as GrowthStage] ?? growthStages.seed}
           onToggleFavorite={onToggleFavorite}
